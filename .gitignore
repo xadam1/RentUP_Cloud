@@ -1,0 +1,86 @@
+##############################################
+# .NET / ASP.NET Core
+##############################################
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+*.userprefs
+*.pidb
+*.DS_Store
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Build outputs
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/
+!**/[Pp]ackages/build/
+*.lock.json
+!package-lock.json
+nuget.config
+project.lock.json
+
+# EF Core migrations — keep source, ignore compiled
+# (Leave Migrations/ tracked)
+
+# Visual Studio / Rider
+.vs/
+.idea/
+*.DotSettings.user
+*.csproj.user
+TestResults/
+[Tt]est[Rr]esult*/
+coverage/
+*.coverage
+*.coveragexml
+
+# Secrets & environment — commit only placeholder files
+# Real secrets must NEVER be committed
+**/secrets.json
+**/*.pfx
+**/*.key
+
+# Docker
+.dockerignore
+
+##############################################
+# Node.js / React / Vite
+##############################################
+node_modules/
+dist/
+dist-ssr/
+*.local
+.cache/
+.parcel-cache/
+
+# Vite
+vite.config.ts.timestamp-*
+
+# Environment variables — NEVER commit real secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build artifacts
+build/
+coverage/
+storybook-static/
+
+# Editor
+.vscode/settings.json
+.vscode/launch.json
+.eslintcache
+
+# OS
+.DS_Store
+Thumbs.db

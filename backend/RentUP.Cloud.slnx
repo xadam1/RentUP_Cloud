@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="RentUP.Cloud.Api/RentUP.Cloud.Api.csproj" />
+  <Project Path="RentUP.Cloud.Application/RentUP.Cloud.Application.csproj" />
+  <Project Path="RentUP.Cloud.Domain/RentUP.Cloud.Domain.csproj" />
+  <Project Path="RentUP.Cloud.Infrastructure/RentUP.Cloud.Infrastructure.csproj" />
+</Solution>
