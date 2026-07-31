@@ -1,23 +1,52 @@
 import { useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function LoginPage() {
+  const { session } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [mode, setMode] = useState<'login' | 'signup'>('login')
 
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  if (session) {
+    return <Navigate to="/dashboard" replace />
+  }
+
   const handle = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    const fn = mode === 'login'
-      ? supabase.auth.signInWithPassword({ email, password })
-      : supabase.auth.signUp({ email, password })
-    const { error } = await fn
-    if (error) setError(error.message)
+    setSuccessMsg(null)
+
+    if (mode === 'signup') {
+      const { data, error } = await supabase.auth.signUp({ email, password })
+      if (error) {
+        setError(translateError(error.message))
+      } else if (data.user && data.user.identities?.length === 0) {
+        setError('Uživatel s tímto e-mailem již existuje. Přihlaste se prosím.')
+      } else {
+        setSuccessMsg('Účet byl úspěšně vytvořen! Pokud je vyžadováno potvrzení, zkontrolujte svůj e-mail a klikněte na potvrzovací odkaz.')
+      }
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        setError(translateError(error.message))
+      }
+    }
     setLoading(false)
+  }
+
+  const translateError = (msg: string) => {
+    if (msg.includes('Email not confirmed')) return 'E-mail dosud nebyl potvrzen. Zkontrolujte prosím svou e-mailovou schránku a klikněte na potvrzovací odkaz.'
+    if (msg.includes('Invalid login credentials')) return 'Nespávný e-mail nebo heslo.'
+    if (msg.includes('User already registered')) return 'Uživatel s tímto e-mailem je již registrován.'
+    if (msg.includes('Password should be at least')) return 'Heslo musí mít alespoň 6 znaků.'
+    return msg
   }
 
   return (
@@ -73,6 +102,12 @@ export default function LoginPage() {
             {error && (
               <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
                 {error}
+              </p>
+            )}
+
+            {successMsg && (
+              <p className="text-emerald-400 text-sm bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
+                {successMsg}
               </p>
             )}
 
