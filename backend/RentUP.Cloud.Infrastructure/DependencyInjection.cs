@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using RentUP.Cloud.Application.Interfaces;
 using RentUP.Cloud.Domain.Interfaces;
 using RentUP.Cloud.Infrastructure.Persistence;
+using RentUP.Cloud.Infrastructure.Repositories;
 using RentUP.Cloud.Infrastructure.Services;
 
 namespace RentUP.Cloud.Infrastructure;
@@ -33,6 +35,12 @@ public static class DependencyInjection
 
         // ICurrentUserService — Scoped (one per HTTP request)
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        // Repositories
+        services.AddScoped<IProductRepository, ProductRepository>();
+        services.AddScoped<IProductSnapshotRepository, ProductSnapshotRepository>();
+        services.AddScoped<IAumSnapshotRepository, AumSnapshotRepository>();
+        services.AddScoped<IUserSettingsRepository, UserSettingsRepository>();
 
         return services;
     }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using RentUP.Cloud.Application;
 using RentUP.Cloud.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -54,8 +55,11 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
-// ── Infrastructure (EF Core + ICurrentUserService) ───────────────────────────
+// ── Infrastructure (EF Core + ICurrentUserService + Repositories) ────────────
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// ── Application services (MathParser, Calculation, CsvImport) ────────────────
+builder.Services.AddApplication();
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
 var allowedOrigins = builder.Configuration

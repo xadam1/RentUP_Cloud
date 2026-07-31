@@ -1,0 +1,115 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using RentUP.Cloud.Application.DTOs;
+using RentUP.Cloud.Application.Interfaces;
+using RentUP.Cloud.Application.Services;
+using RentUP.Cloud.Domain.Entities;
+using RentUP.Cloud.Domain.Interfaces;
+
+namespace RentUP.Cloud.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class ProductsController : ControllerBase
+{
+    private readonly IProductRepository _repo;
+    private readonly MathParserService _math;
+    private readonly ICurrentUserService _user;
+
+    public ProductsController(IProductRepository repo, MathParserService math, ICurrentUserService user)
+    {
+        _repo = repo;
+        _math = math;
+        _user = user;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<List<ProductDto>>> GetAll([FromQuery] bool includeInactive = false)
+    {
+        var products = await _repo.GetAllAsync(includeInactive);
+        return Ok(products.Select(ToDto));
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<ProductDto>> GetById(Guid id)
+    {
+        var p = await _repo.GetByIdAsync(id);
+        return p is null ? NotFound() : Ok(ToDto(p));
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<ProductDto>> Create([FromBody] CreateProductRequest req)
+    {
+        if (!_math.IsValid(req.CommissionFormula, out var formulaError))
+            return BadRequest(new { error = $"Invalid formula: {formulaError}" });
+
+        var product = new Product
+        {
+            UserId = _user.UserId!,
+            Name = req.Name,
+            Category = req.Category,
+            Company = req.Company,
+            ColorHex = req.ColorHex,
+            AverageYield = req.AverageYield,
+            MonthlyDeposit = req.MonthlyDeposit,
+            CommissionFormula = req.CommissionFormula,
+            Order = req.Order,
+            IsActive = true
+        };
+
+        await _repo.AddAsync(product);
+        await _repo.SaveChangesAsync();
+        return CreatedAtAction(nameof(GetById), new { id = product.Id }, ToDto(product));
+    }
+
+    [HttpPut("{id:guid}")]
+    public async Task<ActionResult<ProductDto>> Update(Guid id, [FromBody] UpdateProductRequest req)
+    {
+        var product = await _repo.GetByIdAsync(id);
+        if (product is null) return NotFound();
+
+        if (!_math.IsValid(req.CommissionFormula, out var formulaError))
+            return BadRequest(new { error = $"Invalid formula: {formulaError}" });
+
+        product.Name = req.Name;
+        product.Category = req.Category;
+        product.Company = req.Company;
+        product.ColorHex = req.ColorHex;
+        product.AverageYield = req.AverageYield;
+        product.MonthlyDeposit = req.MonthlyDeposit;
+        product.CommissionFormula = req.CommissionFormula;
+        product.Order = req.Order;
+        product.IsActive = req.IsActive;
+
+        await _repo.UpdateAsync(product);
+        await _repo.SaveChangesAsync();
+        return Ok(ToDto(product));
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var product = await _repo.GetByIdAsync(id);
+        if (product is null) return NotFound();
+
+        // Soft delete — keep for historical data integrity
+        product.IsActive = false;
+        await _repo.UpdateAsync(product);
+        await _repo.SaveChangesAsync();
+        return NoContent();
+    }
+
+    /// <summary>Validates a formula without saving.</summary>
+    [HttpPost("validate-formula")]
+    public ActionResult ValidateFormula([FromBody] string formula)
+    {
+        if (_math.IsValid(formula, out var error))
+            return Ok(new { valid = true });
+        return BadRequest(new { valid = false, error });
+    }
+
+    private static ProductDto ToDto(Product p) => new(
+        p.Id, p.Name, p.Category, p.Company, p.ColorHex,
+        p.AverageYield, p.MonthlyDeposit, p.CommissionFormula, p.Order, p.IsActive);
+}
