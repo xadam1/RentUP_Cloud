@@ -1,11 +1,12 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { LayoutDashboard, BarChart3, Package, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, BarChart3, Package, Settings, LogOut, Handshake } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/projections', icon: BarChart3, label: 'Projekce' },
   { to: '/products', icon: Package, label: 'Produkty' },
+  { to: '/deals', icon: Handshake, label: 'Obchody' },
   { to: '/settings', icon: Settings, label: 'Nastavení' },
 ]
 

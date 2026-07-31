@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function LoginPage() {
-  const { session } = useAuth()
+  const { session, loading: authLoading } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -12,6 +12,9 @@ export default function LoginPage() {
   const [mode, setMode] = useState<'login' | 'signup'>('login')
 
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  // Wait for Supabase to resolve session before deciding where to go
+  if (authLoading) return null
 
   if (session) {
     return <Navigate to="/dashboard" replace />

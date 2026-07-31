@@ -1,4 +1,5 @@
 using RentUP.Cloud.Domain.Entities;
+using RentUP.Cloud.Domain.Enums;
 
 namespace RentUP.Cloud.Application.Interfaces;
 
@@ -33,5 +34,15 @@ public interface IUserSettingsRepository
 {
     Task<UserSettings?> GetAsync();
     Task UpsertAsync(UserSettings settings);
+    Task SaveChangesAsync();
+}
+
+public interface IDealRepository
+{
+    Task<List<Deal>> GetAllAsync(DateTime? from = null, DateTime? to = null, DealStatus? status = null);
+    Task<Deal?> GetByIdAsync(Guid id);
+    Task AddAsync(Deal deal);
+    Task UpdateAsync(Deal deal);
+    Task DeleteAsync(Guid id);
     Task SaveChangesAsync();
 }

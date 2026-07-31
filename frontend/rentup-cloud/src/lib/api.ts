@@ -137,3 +137,57 @@ export interface UpdateSettingsRequest {
   monthlyGoalPoints: number
   theme: string
 }
+
+// ── Deals ──────────────────────────────────────────────────────────────────
+
+export type DealStatus = 'Pending' | 'Active' | 'Completed' | 'Cancelled'
+
+export interface Deal {
+  id: string
+  clientName: string
+  date: string
+  category: string
+  company: string
+  productName: string
+  depositAmount: number
+  calculatedPoints: number
+  estimatedCommission: number
+  status: DealStatus
+  note: string
+}
+
+export interface CreateDealRequest {
+  clientName: string
+  date: string
+  category: string
+  company: string
+  productName: string
+  depositAmount: number
+  commissionFormula: string
+  status: DealStatus
+  note: string
+}
+
+export interface DealsStats {
+  totalCount: number
+  totalDepositAmount: number
+  totalPoints: number
+  totalCommissionCzk: number
+  pendingCount: number
+  activeCount: number
+}
+
+export const dealsApi = {
+  getAll: (params?: { from?: string; to?: string; status?: DealStatus }) =>
+    api.get<Deal[]>('/api/deals', { params }),
+  getById: (id: string) =>
+    api.get<Deal>(`/api/deals/${id}`),
+  getStats: (params?: { from?: string; to?: string }) =>
+    api.get<DealsStats>('/api/deals/stats', { params }),
+  create: (data: CreateDealRequest) =>
+    api.post<Deal>('/api/deals', data),
+  update: (id: string, data: CreateDealRequest) =>
+    api.put<Deal>(`/api/deals/${id}`, data),
+  delete: (id: string) =>
+    api.delete(`/api/deals/${id}`),
+}

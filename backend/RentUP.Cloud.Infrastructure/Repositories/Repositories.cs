@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RentUP.Cloud.Application.Interfaces;
 using RentUP.Cloud.Domain.Entities;
+using RentUP.Cloud.Domain.Enums;
 using RentUP.Cloud.Infrastructure.Persistence;
 
 namespace RentUP.Cloud.Infrastructure.Repositories;
@@ -124,6 +125,35 @@ public class UserSettingsRepository : IUserSettingsRepository
             existing.MonthlyGoalPoints = settings.MonthlyGoalPoints;
             existing.Theme = settings.Theme;
         }
+    }
+
+    public Task SaveChangesAsync() => _db.SaveChangesAsync();
+}
+
+public class DealRepository : IDealRepository
+{
+    private readonly AppDbContext _db;
+    public DealRepository(AppDbContext db) => _db = db;
+
+    public Task<List<Deal>> GetAllAsync(DateTime? from = null, DateTime? to = null, DealStatus? status = null)
+    {
+        var q = _db.Deals.AsQueryable();
+        if (from.HasValue)   q = q.Where(d => d.Date >= from.Value);
+        if (to.HasValue)     q = q.Where(d => d.Date <= to.Value);
+        if (status.HasValue) q = q.Where(d => d.Status == status.Value);
+        return q.OrderByDescending(d => d.Date).ToListAsync();
+    }
+
+    public Task<Deal?> GetByIdAsync(Guid id) => _db.Deals.FirstOrDefaultAsync(d => d.Id == id);
+
+    public async Task AddAsync(Deal deal) => await _db.Deals.AddAsync(deal);
+
+    public Task UpdateAsync(Deal deal) { _db.Deals.Update(deal); return Task.CompletedTask; }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        var d = await _db.Deals.FindAsync(id);
+        if (d is not null) _db.Deals.Remove(d);
     }
 
     public Task SaveChangesAsync() => _db.SaveChangesAsync();
