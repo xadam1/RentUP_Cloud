@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\RentUP.Cloud.Domain\RentUP.Cloud.Domain.csproj" />
@@ -6,7 +6,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.11" />
+    <!--
+      FrameworkReference gives access to the full ASP.NET Core shared framework
+      (IHttpContextAccessor, ClaimsPrincipal.FindFirstValue, AddHttpContextAccessor, etc.)
+      without pulling in an old NuGet package. This is the correct pattern for
+      non-Web classlibaries targeting net10.0 that need ASP.NET Core types.
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

@@ -18,9 +18,12 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         // EF Core — Npgsql / PostgreSQL (Supabase)
+        var connectionString = configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not configured.");
+
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(
-                configuration.GetConnectionString("DefaultConnection"),
+                connectionString,
                 npgsql => npgsql.MigrationsAssembly(typeof(AppDbContext).Assembly.FullName)
             )
         );

@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using RentUP.Cloud.Domain.Interfaces;
 
@@ -19,8 +18,8 @@ public class CurrentUserService : ICurrentUserService
 
     /// <inheritdoc />
     public string? UserId =>
-        _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? _httpContextAccessor.HttpContext?.User?.FindFirstValue("sub");
+        _httpContextAccessor.HttpContext?.User?.Claims
+            .FirstOrDefault(c => c.Type == "sub")?.Value;
 
     /// <inheritdoc />
     public bool IsAuthenticated =>
