@@ -13,7 +13,6 @@ export default function LoginPage() {
 
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
-  // Wait for Supabase to resolve session before deciding where to go
   if (authLoading) return null
 
   if (session) {
@@ -46,70 +45,79 @@ export default function LoginPage() {
 
   const translateError = (msg: string) => {
     if (msg.includes('Email not confirmed')) return 'E-mail dosud nebyl potvrzen. Zkontrolujte prosím svou e-mailovou schránku a klikněte na potvrzovací odkaz.'
-    if (msg.includes('Invalid login credentials')) return 'Nespávný e-mail nebo heslo.'
+    if (msg.includes('Invalid login credentials')) return 'Nesprávný e-mail nebo heslo.'
     if (msg.includes('User already registered')) return 'Uživatel s tímto e-mailem je již registrován.'
     if (msg.includes('Password should be at least')) return 'Heslo musí mít alespoň 6 znaků.'
     return msg
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
-      {/* Ambient glow */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-600/10 rounded-full blur-3xl" />
+    <div className="min-h-screen bg-transparent flex items-center justify-center p-4 relative overflow-hidden font-sans">
+      {/* Background Dots & Glow */}
+      <div className="bg-dots" />
+      <div className="bg-glow">
+        <div className="glow-orb-1" />
+        <div className="glow-orb-2" />
       </div>
 
-      <div className="relative w-full max-w-md">
+      <div className="relative w-full max-w-md z-10 animate-in zoom-in-95 duration-300">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
-              <span className="text-white font-bold text-sm">R</span>
-            </div>
-            <span className="text-white font-semibold text-xl tracking-tight">RentUP Cloud</span>
+        <div className="text-center mb-8 flex flex-col items-center">
+          <div className="mb-4">
+            <img 
+              src="/assets/RentUP_Logo_Dark.png" 
+              alt="RentUP" 
+              className="h-12 w-auto block dark:hidden object-contain mx-auto"
+            />
+            <img 
+              src="/assets/RentUP_Logo_White.png" 
+              alt="RentUP" 
+              className="h-12 w-auto hidden dark:block object-contain mx-auto"
+            />
           </div>
-          <p className="text-white/40 text-sm">Správa AUM pro finanční poradce</p>
+          <h1 className="text-zinc-900 dark:text-white font-bold text-xl tracking-tight">RentUP Cloud & AUM</h1>
+          <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-1">Profesionální správa portfolia pro investiční poradce</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-8 backdrop-blur-sm shadow-2xl">
-          <h2 className="text-white font-semibold text-lg mb-6">
-            {mode === 'login' ? 'Přihlásit se' : 'Vytvořit účet'}
+        <div className="modern-card p-8 shadow-2xl backdrop-blur-xl border border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90">
+          <h2 className="text-zinc-900 dark:text-white font-bold text-lg mb-6">
+            {mode === 'login' ? 'Přihlášení do účtu' : 'Registrace nového účtu'}
           </h2>
 
           <form onSubmit={handle} className="space-y-4">
             <div>
-              <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">E-mail</label>
+              <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5 uppercase tracking-wider">E-mail</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
-                className="w-full bg-white/[0.06] border border-white/[0.1] rounded-xl px-4 py-3 text-white placeholder-white/25 text-sm focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30 transition-all"
+                className="w-full bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-300 dark:border-zinc-700 rounded-xl px-4 py-3 text-zinc-900 dark:text-white placeholder-zinc-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                 placeholder="vas@email.cz"
               />
             </div>
 
             <div>
-              <label className="block text-white/60 text-xs font-medium mb-1.5 uppercase tracking-wider">Heslo</label>
+              <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5 uppercase tracking-wider">Heslo</label>
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                className="w-full bg-white/[0.06] border border-white/[0.1] rounded-xl px-4 py-3 text-white placeholder-white/25 text-sm focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30 transition-all"
+                className="w-full bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-300 dark:border-zinc-700 rounded-xl px-4 py-3 text-zinc-900 dark:text-white placeholder-zinc-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
                 placeholder="••••••••"
               />
             </div>
 
             {error && (
-              <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+              <p className="text-red-600 dark:text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 font-medium">
                 {error}
               </p>
             )}
 
             {successMsg && (
-              <p className="text-emerald-400 text-sm bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
+              <p className="text-emerald-600 dark:text-emerald-400 text-sm bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 font-medium">
                 {successMsg}
               </p>
             )}
@@ -117,19 +125,19 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-medium rounded-xl py-3 text-sm transition-all duration-200 disabled:opacity-50 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:-translate-y-px active:translate-y-0"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl py-3 text-sm transition-all duration-200 disabled:opacity-50 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/35 hover:-translate-y-px active:translate-y-0"
             >
-              {loading ? 'Načítám...' : mode === 'login' ? 'Přihlásit se' : 'Vytvořit účet'}
+              {loading ? 'Ověřování...' : mode === 'login' ? 'Přihlásit se do RentUP' : 'Vytvořit poradenský účet'}
             </button>
           </form>
 
-          <p className="text-center text-white/40 text-sm mt-6">
-            {mode === 'login' ? 'Nemáte účet?' : 'Máte účet?'}{' '}
+          <p className="text-center text-zinc-500 dark:text-zinc-400 text-sm mt-6">
+            {mode === 'login' ? 'Zatím nemáte přístup?' : 'Máte již svůj účet?'}{' '}
             <button
               onClick={() => setMode(m => m === 'login' ? 'signup' : 'login')}
-              className="text-blue-400 hover:text-blue-300 transition-colors"
+              className="text-blue-600 dark:text-blue-400 font-semibold hover:underline transition-colors"
             >
-              {mode === 'login' ? 'Registrovat' : 'Přihlásit se'}
+              {mode === 'login' ? 'Založit účet zdarma' : 'Přejít k přihlášení'}
             </button>
           </p>
         </div>
