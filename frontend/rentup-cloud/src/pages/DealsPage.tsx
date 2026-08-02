@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Briefcase, CheckCircle2 } from 'lucide-react'
 import {
   dealsApi, productsApi,
   type Deal, type CreateDealRequest, type DealStatus, type Product,
@@ -21,18 +21,17 @@ const COMPANIES: Record<string, string> = {
 }
 
 const STATUS_LABELS: Record<DealStatus, string> = {
-  Pending: 'Čekající', Active: 'Aktivní', Completed: 'Dokončený', Cancelled: 'Zrušený',
+  Pending: 'Čekající', Active: 'Aktivní / Běží', Completed: 'Uzavřený', Cancelled: 'Zrušený',
 }
 
 const STATUS_COLORS: Record<DealStatus, string> = {
-  Pending: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
-  Active: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
-  Completed: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
-  Cancelled: 'bg-white/[0.06] text-white/30 border-white/10',
+  Pending: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  Active: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+  Completed: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  Cancelled: 'bg-zinc-200 dark:bg-zinc-800 text-zinc-500 border-zinc-300 dark:border-zinc-700',
 }
 
 const czk = new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK', maximumFractionDigits: 0 })
-const INPUT = 'w-full bg-white/[0.06] border border-white/[0.1] rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30 transition-all [&>option]:bg-[#1a1a2e]'
 
 // ── Deal Dialog ───────────────────────────────────────────────────────────────
 
@@ -47,19 +46,19 @@ function DealDialog({ deal, products, onClose, onSaved }: {
     date: deal.date.slice(0, 10),
     category: deal.category,
     company: deal.company,
-    productName: deal.productName,
+    productName: deal.productName || (defaultProduct?.name ?? 'Conseq Horizont Invest'),
     depositAmount: deal.depositAmount,
-    commissionFormula: '',
+    commissionFormula: 'AUM * 0.015 * 0.35',
     status: deal.status,
     note: deal.note,
   } : {
     clientName: '',
     date: new Date().toISOString().slice(0, 10),
     category: 'InvestmentFund',
-    company: 'Other',
-    productName: defaultProduct?.name ?? '',
-    depositAmount: 0,
-    commissionFormula: defaultProduct?.commissionFormula ?? '',
+    company: 'Conseq',
+    productName: defaultProduct?.name ?? 'Conseq Horizont Invest',
+    depositAmount: 100000,
+    commissionFormula: defaultProduct?.commissionFormula ?? 'AUM * 0.015 * 0.35',
     status: 'Pending',
     note: '',
   })
@@ -69,11 +68,10 @@ function DealDialog({ deal, products, onClose, onSaved }: {
 
   const set = (k: keyof CreateDealRequest, v: any) => setForm(f => ({ ...f, [k]: v }))
 
-  // Auto-fill formula when product is selected
   const handleProductSelect = (productName: string) => {
     set('productName', productName)
     const p = products.find(p => p.name === productName)
-    if (p) {
+    if (p && p.commissionFormula) {
       set('commissionFormula', p.commissionFormula)
       set('category', p.category)
       set('company', p.company)
@@ -83,105 +81,173 @@ function DealDialog({ deal, products, onClose, onSaved }: {
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
+    setError(null)
     try {
+      if (!form.clientName.trim()) {
+        setError('Jméno klienta je povinné.');
+        setSaving(false);
+        return;
+      }
       if (isEdit) await dealsApi.update(deal!.id, form)
       else await dealsApi.create(form)
       onSaved()
-    } catch (e: any) {
-      setError(e?.response?.data?.error ?? 'Chyba při ukládání.')
+    } catch (err: any) {
+      setError(err?.response?.data?.error ?? 'Chyba při ukládání obchodu do databází. Zkontrolujte prosím připojení.')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-[#13131f] border border-white/[0.1] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-white/[0.08] flex items-center justify-between">
-          <h3 className="text-white font-medium">{isEdit ? 'Upravit obchod' : 'Nový obchod'}</h3>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors text-xl leading-none">×</button>
-        </div>
-
-        <form onSubmit={save} className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto">
-          {/* Client + Date */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={LBL}>Klient</label>
-              <input value={form.clientName} onChange={e => set('clientName', e.target.value)}
-                required className={INPUT} placeholder="Jan Novák" />
+      <div className="fixed inset-0 modal-backdrop animate-in fade-in duration-200" onClick={onClose} />
+      <div className="relative z-10 w-full max-w-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-xl max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+        <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-800/50">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-500">
+              <Briefcase className="w-4 h-4" />
             </div>
             <div>
-              <label className={LBL}>Datum</label>
-              <input type="date" value={form.date} onChange={e => set('date', e.target.value)}
-                required className={INPUT} />
+              <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+                {isEdit ? 'Upravit evidovaný obchod' : 'Zasáhnout nový obchod / smlouvu'}
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Nastavte klienta a vklad pro kalkulaci bodů.</p>
             </div>
           </div>
+          <button onClick={onClose} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800">×</button>
+        </div>
 
-          {/* Product selector */}
-          {products.length > 0 && (
-            <div>
-              <label className={LBL}>Produkt (z katalogu)</label>
-              <select value={form.productName} onChange={e => handleProductSelect(e.target.value)} className={INPUT}>
-                <option value="">— vlastní —</option>
-                {products.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
-              </select>
+        <form onSubmit={save} className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto flex-1">
+          {error && (
+            <div className="p-3.5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-600 dark:text-red-400 text-sm font-medium">
+              {error}
             </div>
           )}
 
-          {/* Category + Company */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={LBL}>Kategorie</label>
-              <select value={form.category} onChange={e => set('category', e.target.value)} className={INPUT}>
+              <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5">Klient *</label>
+              <input 
+                value={form.clientName} 
+                onChange={e => set('clientName', e.target.value)}
+                required 
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none" 
+                placeholder="např. Jan Novák" 
+              />
+            </div>
+            <div>
+              <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5">Datum uzavření *</label>
+              <input 
+                type="date" 
+                value={form.date} 
+                onChange={e => set('date', e.target.value)}
+                required 
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none" 
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5">Investiční / Obchodní produkt</label>
+            {products.length > 0 ? (
+              <select 
+                value={form.productName} 
+                onChange={e => handleProductSelect(e.target.value)} 
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-blue-500/50 outline-none"
+              >
+                <option value={form.productName}>{form.productName || 'Vyberte produkt z portfolia'}</option>
+                {products.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+              </select>
+            ) : (
+              <input 
+                value={form.productName} 
+                onChange={e => set('productName', e.target.value)} 
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-blue-500/50 outline-none" 
+                placeholder="Conseq Active Invest"
+              />
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5">Kategorie</label>
+              <select 
+                value={form.category} 
+                onChange={e => set('category', e.target.value)} 
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none"
+              >
                 {Object.entries(CATEGORIES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
             <div>
-              <label className={LBL}>Společnost</label>
-              <select value={form.company} onChange={e => set('company', e.target.value)} className={INPUT}>
+              <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5">Společnost / Partner</label>
+              <select 
+                value={form.company} 
+                onChange={e => set('company', e.target.value)} 
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none"
+              >
                 {Object.entries(COMPANIES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
           </div>
 
-          {/* Deposit */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className={LBL}>Vkladová částka (CZK)</label>
-              <input type="number" step="1" value={form.depositAmount}
-                onChange={e => set('depositAmount', +e.target.value)} className={INPUT} />
+              <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5">Objem vkladu (CZK)</label>
+              <input 
+                type="number" 
+                step="1" 
+                value={form.depositAmount}
+                onChange={e => set('depositAmount', parseFloat(e.target.value) || 0)} 
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white text-sm font-mono font-bold focus:ring-2 focus:ring-blue-500/50 outline-none" 
+              />
             </div>
             <div>
-              <label className={LBL}>Stav</label>
-              <select value={form.status} onChange={e => set('status', e.target.value as DealStatus)} className={INPUT}>
+              <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5">Aktuální stav</label>
+              <select 
+                value={form.status} 
+                onChange={e => set('status', e.target.value as DealStatus)} 
+                className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-zinc-900 dark:text-white text-sm font-semibold focus:ring-2 focus:ring-blue-500/50 outline-none"
+              >
                 {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
           </div>
 
-          {/* Formula */}
           <div>
-            <label className={LBL}>Vzorec provize (NCalc, proměnná: AUM = vkladová částka)</label>
-            <input value={form.commissionFormula} onChange={e => set('commissionFormula', e.target.value)}
-              className={`${INPUT} font-mono text-xs`} placeholder="(AUM/1555200)*24" />
+            <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5">Vzorec pro provizi (proměnná: AUM nebo VKLAD)</label>
+            <input 
+              value={form.commissionFormula} 
+              onChange={e => set('commissionFormula', e.target.value)}
+              className="w-full bg-zinc-100 dark:bg-zinc-950 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3.5 py-2.5 text-blue-600 dark:text-blue-400 text-sm font-mono font-bold focus:ring-2 focus:ring-blue-500/50 outline-none" 
+              placeholder="AUM * 0.015 * 0.35" 
+            />
           </div>
 
-          {/* Note */}
           <div>
-            <label className={LBL}>Poznámka</label>
-            <textarea value={form.note} onChange={e => set('note', e.target.value)}
-              rows={2} className={`${INPUT} resize-none`} />
+            <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5">Poznámka pro interní evidenci</label>
+            <textarea 
+              value={form.note} 
+              onChange={e => set('note', e.target.value)}
+              rows={2} 
+              className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-xl px-3.5 py-2 text-zinc-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none resize-none" 
+            />
           </div>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-
-          <div className="flex justify-end gap-3 pt-1">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-white/50 hover:text-white transition-colors">
+          <div className="flex justify-end gap-3 pt-3 border-t border-zinc-200 dark:border-zinc-800">
+            <button 
+              type="button" 
+              onClick={onClose} 
+              className="px-5 py-2.5 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"
+            >
               Zrušit
             </button>
-            <button type="submit" disabled={saving}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all disabled:opacity-50">
-              {saving ? 'Ukládám...' : isEdit ? 'Uložit' : 'Vytvořit obchod'}
+            <button 
+              type="submit" 
+              disabled={saving}
+              className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/25 disabled:opacity-50 flex items-center gap-2"
+            >
+              {saving ? 'Ukládám do DB...' : isEdit ? 'Uložit změny' : 'Zaregistrovat obchod'}
             </button>
           </div>
         </form>
@@ -189,8 +255,6 @@ function DealDialog({ deal, products, onClose, onSaved }: {
     </div>
   )
 }
-
-const LBL = 'block text-white/50 text-xs font-medium uppercase tracking-wider mb-1.5'
 
 // ── Deals Page ────────────────────────────────────────────────────────────────
 
@@ -213,127 +277,172 @@ export default function DealsPage() {
       setDeals(dealsRes.data)
       setProducts(productsRes.data)
       setStats(statsRes.data)
+    } catch (err) {
+      console.error('Chyba komunikace u obchodního API:', err);
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { load() }, [statusFilter]) // eslint-disable-line
+  useEffect(() => { load() }, [statusFilter])
 
   const handleDelete = async (deal: Deal) => {
-    if (!confirm(`Smazat obchod s klientem "${deal.clientName}"?`)) return
-    await dealsApi.delete(deal.id)
-    load()
+    if (!window.confirm(`Smazat obchod s klientem "${deal.clientName}"?`)) return
+    try {
+      await dealsApi.delete(deal.id)
+      load()
+    } catch {
+      alert('Došlo k chybě při mazání záznamu.');
+    }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-7xl mx-auto pb-16 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-white text-2xl font-semibold tracking-tight">Obchody / Produkce</h1>
-          <p className="text-white/40 text-sm mt-0.5">Přehled uzavřených a otevřených obchodů</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 flex-shrink-0">
+            <Briefcase className="w-5 h-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
+              Obchody & Produkční evidence
+            </h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
+              Přehled sjednaných smluv s automatickou kalkulací provizních bodů z objemu vkladů do produktů.
+            </p>
+          </div>
         </div>
-        <button onClick={() => setDialog('new')}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-blue-500/20 hover:-translate-y-px">
-          <Plus className="w-4 h-4" />
-          Nový obchod
+        
+        <button 
+          onClick={() => setDialog('new')}
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/25 self-start md:self-auto"
+        >
+          <Plus className="w-4 h-4 stroke-[2.5]" />
+          <span>Přidat nový obchod</span>
         </button>
       </div>
 
-      {/* Stats */}
+      {/* Stats Cards */}
       {stats && (
-        <div className="grid grid-cols-3 gap-4">
-          {[
-            { label: 'Celkem obchodů', value: stats.totalCount.toString() },
-            { label: 'Celkové body', value: stats.totalPoints.toFixed(1) },
-            { label: 'Provize celkem', value: czk.format(stats.totalCommissionCzk) },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-white/[0.04] border border-white/[0.08] rounded-2xl p-5">
-              <p className="text-white/40 text-xs uppercase tracking-wider mb-2">{label}</p>
-              <p className="text-white text-xl font-semibold">{value}</p>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          <div className="modern-card p-5 relative overflow-hidden">
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-1">
+              Celkem evidovaných smluv
+            </span>
+            <p className="text-2xl lg:text-3xl font-bold font-mono text-zinc-900 dark:text-white">
+              {stats.totalCount} <span className="text-sm font-normal text-zinc-500">obchodů</span>
+            </p>
+          </div>
+          <div className="modern-card p-5 relative overflow-hidden">
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-1">
+              Celková provizní produkce
+            </span>
+            <p className="text-2xl lg:text-3xl font-bold font-mono text-amber-600 dark:text-amber-400">
+              {stats.totalPoints.toLocaleString('cs-CZ', { maximumFractionDigits: 1 })} <span className="text-sm font-semibold text-zinc-500">b.</span>
+            </p>
+          </div>
+          <div className="modern-card p-5 relative overflow-hidden border-l-4 border-l-emerald-500">
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-1">
+              Provize celkem (při hodn. bodu)
+            </span>
+            <p className="text-2xl lg:text-3xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+              {czk.format(stats.totalCommissionCzk)}
+            </p>
+          </div>
         </div>
       )}
 
-      {/* Filter */}
-      <div className="flex items-center gap-2">
+      {/* Filter tabs */}
+      <div className="flex items-center gap-2 flex-wrap">
         {(['', 'Pending', 'Active', 'Completed', 'Cancelled'] as const).map(s => (
-          <button key={s} onClick={() => setStatusFilter(s)}
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+          <button 
+            key={s} 
+            onClick={() => setStatusFilter(s)}
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
               statusFilter === s
-                ? 'bg-blue-600 border-blue-500 text-white'
-                : 'border-white/[0.08] text-white/40 hover:text-white/70 hover:border-white/20'
-            }`}>
-            {s === '' ? 'Vše' : STATUS_LABELS[s]}
+                ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 border-transparent shadow-sm'
+                : 'bg-zinc-100 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+            }`}
+          >
+            {s === '' ? 'Všechny obchody' : STATUS_LABELS[s]}
           </button>
         ))}
       </div>
 
       {/* Table */}
-      <div className="bg-white/[0.04] border border-white/[0.08] rounded-2xl overflow-hidden">
+      <div className="modern-card overflow-hidden border border-zinc-200 dark:border-zinc-800">
         {loading ? (
-          <div className="p-1 space-y-px">
-            {[...Array(5)].map((_, i) => <div key={i} className="h-14 bg-white/[0.03] rounded-xl animate-pulse" />)}
+          <div className="p-12 text-center text-sm font-medium text-zinc-500 animate-pulse">
+            Načítání seznamu obchodů a smluv...
           </div>
         ) : deals.length === 0 ? (
-          <div className="py-16 text-center text-white/25 text-sm">
-            Žádné obchody — vytvořte první záznam
+          <div className="py-16 text-center text-zinc-500 dark:text-zinc-400 text-sm">
+            <p className="font-semibold mb-1">Nebyl nalezen žádný evidovaný obchod ani smlouva.</p>
+            <p className="text-xs text-zinc-400 max-w-sm mx-auto">Kliknutím na "Přidat nový obchod" vytvoříte svůj první záznam do deníku provizních příjmů.</p>
           </div>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/[0.06]">
-                {['Klient', 'Datum', 'Produkt', 'Vklad', 'Body', 'Provize', 'Stav', ''].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-white/30 text-xs font-medium uppercase tracking-wider">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {deals.map(d => (
-                <tr key={d.id} className="border-b border-white/[0.04] last:border-0 hover:bg-white/[0.03] transition-colors">
-                  <td className="px-4 py-3.5">
-                    <p className="text-white text-sm font-medium">{d.clientName}</p>
-                    <p className="text-white/30 text-xs">{COMPANIES[d.company] ?? d.company}</p>
-                  </td>
-                  <td className="px-4 py-3.5 text-white/50 text-sm">
-                    {new Date(d.date).toLocaleDateString('cs-CZ')}
-                  </td>
-                  <td className="px-4 py-3.5 text-white/70 text-sm">
-                    <p>{d.productName}</p>
-                    <p className="text-white/30 text-xs">{CATEGORIES[d.category] ?? d.category}</p>
-                  </td>
-                  <td className="px-4 py-3.5 text-white/70 text-sm font-mono">
-                    {d.depositAmount.toLocaleString('cs-CZ')} Kč
-                  </td>
-                  <td className="px-4 py-3.5 text-amber-400 text-sm font-mono">
-                    {d.calculatedPoints.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3.5 text-emerald-400 text-sm font-mono">
-                    {czk.format(d.estimatedCommission)}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border ${STATUS_COLORS[d.status]}`}>
-                      {STATUS_LABELS[d.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1">
-                      <button onClick={() => setDialog(d)}
-                        className="p-1.5 rounded-lg text-white/30 hover:text-white hover:bg-white/[0.08] transition-all">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => handleDelete(d)}
-                        className="p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                  {['Klient & Partner', 'Datum', 'Investované Aktivum / Produkt', 'Objem vkladu', 'Vytěžené Body', 'Odhad provize', 'Stav', 'Akce'].map((h, idx) => (
+                    <th key={h} className={`py-3.5 px-5 ${idx >= 3 && idx <= 5 ? 'text-right' : ''} ${idx === 7 ? 'text-right' : ''}`}>{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/80 text-sm text-zinc-700 dark:text-zinc-300">
+                {deals.map(d => (
+                  <tr key={d.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                    <td className="py-4 px-5">
+                      <div className="font-bold text-zinc-900 dark:text-zinc-100">{d.clientName}</div>
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{COMPANIES[d.company] ?? d.company}</div>
+                    </td>
+                    <td className="py-4 px-5 text-zinc-600 dark:text-zinc-400 font-medium">
+                      {new Date(d.date).toLocaleDateString('cs-CZ')}
+                    </td>
+                    <td className="py-4 px-5">
+                      <div className="font-semibold text-zinc-800 dark:text-zinc-200">{d.productName || 'Neuvedený produkt'}</div>
+                      <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{CATEGORIES[d.category] ?? d.category}</div>
+                    </td>
+                    <td className="py-4 px-5 text-right font-mono font-bold text-zinc-900 dark:text-white">
+                      {d.depositAmount.toLocaleString('cs-CZ')} Kč
+                    </td>
+                    <td className="py-4 px-5 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                      ~{d.calculatedPoints.toLocaleString('cs-CZ', { maximumFractionDigits: 1 })} b.
+                    </td>
+                    <td className="py-4 px-5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                      {czk.format(d.estimatedCommission)}
+                    </td>
+                    <td className="py-4 px-5">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_COLORS[d.status]}`}>
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>{STATUS_LABELS[d.status]}</span>
+                      </span>
+                    </td>
+                    <td className="py-4 px-5 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={() => setDialog(d)}
+                          title="Upravit obchod"
+                          className="p-1.5 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(d)}
+                          title="Odstranit"
+                          className="p-1.5 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

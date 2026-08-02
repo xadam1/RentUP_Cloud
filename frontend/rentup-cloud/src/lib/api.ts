@@ -37,7 +37,7 @@ export const aumApi = {
   getSnapshots: () =>
     api.get<AumSnapshot[]>('/api/aum/snapshots'),
   getSummary: () =>
-    api.get<AumSummary | null>('/api/aum/summary'),
+    api.get<DashboardSummary | null>('/api/aum/summary'),
   getProjections: (years = 10) =>
     api.get<ProjectionsResponse>(`/api/aum/projections?years=${years}`),
   previewCsv: (file: File) => {
@@ -47,6 +47,8 @@ export const aumApi = {
   },
   commitImport: (rows: CsvPreviewRow[]) =>
     api.post<{ committed: number }>('/api/aum/import/commit', rows),
+  seedTestData: () =>
+    api.post<{ success: boolean; message: string }>('/api/aum/seed-test-data'),
 }
 
 export const settingsApi = {
@@ -74,6 +76,8 @@ export interface Product {
   monthlyDeposit: number
   commissionFormula: string
   order: number
+  includeInAum?: boolean
+  currentAum?: number
   isActive: boolean
 }
 
@@ -88,13 +92,37 @@ export interface AumSnapshot {
   pointsPerYear: number
 }
 
-export interface AumSummary {
+export interface ProductDashboardItem {
+  id: string
+  name: string
+  category: ProductCategory
+  company: ProductCompany
+  colorHex: string
+  currentAum: number
+  monthlyDeposit: number
+  averageYield: number
+  commissionFormula: string
+  includeInAum: boolean
+  portfolioSharePercent: number
+  monthlyIncomeCzk: number
+  yearlyPoints: number
+}
+
+export interface DashboardSummary {
   date: string
   totalAum: number
+  aumChangeYtdPercent: number
   totalMonthlyDeposit: number
+  depositChangeCzk: number
   pointsPerYear: number
-  estimatedCommissionCzk: number
+  pointsPerMonth: number
+  estimatedCommissionYearCzk: number
+  estimatedCommissionMonthCzk: number
+  basePointValue: number
+  products: ProductDashboardItem[]
 }
+
+export type AumSummary = DashboardSummary
 
 export interface ProjectionPoint {
   date: string
