@@ -48,6 +48,7 @@ public class AppDbContext : DbContext
             e.Property(p => p.CommissionFormula).HasMaxLength(500);
             e.Property(p => p.AverageYield).HasPrecision(18, 6);
             e.Property(p => p.MonthlyDeposit).HasPrecision(18, 2);
+            e.Property(p => p.CurrentAum).HasPrecision(18, 2);
             e.Property(p => p.Category).HasConversion<int>();
             e.Property(p => p.Company).HasConversion<int>();
 

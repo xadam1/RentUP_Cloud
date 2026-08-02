@@ -23,6 +23,9 @@ public class MathParserService
         {
             var expression = new Expression(formula);
             expression.Parameters["AUM"] = (double)aum;
+            expression.Parameters["aum"] = (double)aum;
+            expression.Parameters["VKLAD"] = (double)aum;
+            expression.Parameters["vklad"] = (double)aum;
 
             var result = expression.Evaluate();
 

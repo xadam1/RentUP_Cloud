@@ -55,6 +55,8 @@ public class ProductsController : ControllerBase
             MonthlyDeposit = req.MonthlyDeposit,
             CommissionFormula = req.CommissionFormula,
             Order = req.Order,
+            IncludeInAum = req.IncludeInAum,
+            CurrentAum = req.CurrentAum,
             IsActive = true
         };
 
@@ -80,6 +82,8 @@ public class ProductsController : ControllerBase
         product.MonthlyDeposit = req.MonthlyDeposit;
         product.CommissionFormula = req.CommissionFormula;
         product.Order = req.Order;
+        product.IncludeInAum = req.IncludeInAum;
+        product.CurrentAum = req.CurrentAum;
         product.IsActive = req.IsActive;
 
         await _repo.UpdateAsync(product);
@@ -111,5 +115,5 @@ public class ProductsController : ControllerBase
 
     private static ProductDto ToDto(Product p) => new(
         p.Id, p.Name, p.Category, p.Company, p.ColorHex,
-        p.AverageYield, p.MonthlyDeposit, p.CommissionFormula, p.Order, p.IsActive);
+        p.AverageYield, p.MonthlyDeposit, p.CommissionFormula, p.Order, p.IncludeInAum, p.CurrentAum, p.IsActive);
 }

@@ -32,7 +32,7 @@ public class CalculationService
         decimal basePointValue,
         int yearsToProject = 10)
     {
-        var productList = products.Where(p => p.IsActive).ToList();
+        var productList = products.Where(p => p.IsActive && p.IncludeInAum).ToList();
         var months = yearsToProject * 12;
         var startDate = DateTime.UtcNow.Date;
         // Start from the first of next month
@@ -66,12 +66,12 @@ public class CalculationService
             var totalAum = workingAums.Values.Sum();
             var totalDeposit = productList.Sum(p => p.MonthlyDeposit);
 
-            // Points per year = sum of CommissionFormula(AUM) for each product * 12
+            // Points per year = sum of CommissionFormula(AUM) for each product
             decimal totalPointsPerYear = 0m;
             foreach (var product in productList)
             {
                 var productPoints = _mathParser.Evaluate(product.CommissionFormula, workingAums[product.Id]);
-                totalPointsPerYear += productPoints * 12m;
+                totalPointsPerYear += productPoints;
             }
 
             var commissionCzk = totalPointsPerYear * basePointValue;
@@ -89,10 +89,10 @@ public class CalculationService
     public decimal CalculatePointsPerYear(IEnumerable<Product> products, Dictionary<Guid, decimal> aumByProduct)
     {
         decimal total = 0m;
-        foreach (var p in products.Where(p => p.IsActive))
+        foreach (var p in products.Where(p => p.IsActive && p.IncludeInAum))
         {
             if (aumByProduct.TryGetValue(p.Id, out var aum))
-                total += _mathParser.Evaluate(p.CommissionFormula, aum) * 12m;
+                total += _mathParser.Evaluate(p.CommissionFormula, aum);
         }
         return total;
     }

@@ -40,6 +40,12 @@ public class Product
     /// <summary>Display order in UI lists.</summary>
     public int Order { get; set; }
 
+    /// <summary>Whether this product is included in total AUM calculation and dashboard.</summary>
+    public bool IncludeInAum { get; set; } = true;
+
+    /// <summary>Current total AUM of this product.</summary>
+    public decimal CurrentAum { get; set; }
+
     /// <summary>Soft-delete flag. Inactive products are hidden from UI but kept for history.</summary>
     public bool IsActive { get; set; } = true;
 

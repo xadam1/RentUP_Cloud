@@ -1,3 +1,5 @@
+using RentUP.Cloud.Domain.Enums;
+
 namespace RentUP.Cloud.Application.DTOs;
 
 // ── AUM Snapshots ────────────────────────────────────────────────────────────
@@ -17,6 +19,36 @@ public record ProductSnapshotDto(
     DateTime Date,
     decimal Aum,
     decimal MonthlyDeposit
+);
+
+public record ProductDashboardItemDto(
+    Guid Id,
+    string Name,
+    ProductCategory Category,
+    ProductCompany Company,
+    string ColorHex,
+    decimal CurrentAum,
+    decimal MonthlyDeposit,
+    decimal AverageYield,
+    string CommissionFormula,
+    bool IncludeInAum,
+    decimal PortfolioSharePercent,
+    decimal MonthlyIncomeCzk,
+    decimal YearlyPoints
+);
+
+public record DashboardSummaryDto(
+    DateTime Date,
+    decimal TotalAum,
+    decimal AumChangeYtdPercent,
+    decimal TotalMonthlyDeposit,
+    decimal DepositChangeCzk,
+    decimal PointsPerYear,
+    decimal PointsPerMonth,
+    decimal EstimatedCommissionYearCzk,
+    decimal EstimatedCommissionMonthCzk,
+    decimal BasePointValue,
+    List<ProductDashboardItemDto> Products
 );
 
 // ── CSV Import ────────────────────────────────────────────────────────────────

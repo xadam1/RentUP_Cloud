@@ -3,17 +3,15 @@ using Microsoft.AspNetCore.Http;
 using RentUP.Cloud.Application.DTOs;
 using RentUP.Cloud.Application.Interfaces;
 using RentUP.Cloud.Domain.Entities;
+using RentUP.Cloud.Domain.Enums;
 
 namespace RentUP.Cloud.Application.Services;
 
 /// <summary>
-/// Two-phase CSV import service.
+/// Two-phase CSV import service ported from legacy desktop application logic.
+/// Supports matrix CSV format (datum_stav;AVANT;CONSEQ;...) where columns represent products.
 /// Phase 1 (Preview): parse, validate, return preview rows — NO DB writes.
-/// Phase 2 (Commit): client sends confirmed rows, service writes to DB.
-///
-/// Ported from legacy RentUP.Services.CsvImportService.
-/// CSV format: semicolon-separated, columns: Date;ProductName;AUM;MonthlyDeposit
-/// Multiple Czech date formats supported (dd.MM.yyyy, yyyy-MM-dd, M/d/yyyy).
+/// Phase 2 (Commit): client sends confirmed rows, service writes to DB and updates CurrentAum.
 /// </summary>
 public class CsvImportService
 {
@@ -25,7 +23,7 @@ public class CsvImportService
     private static readonly string[] DateFormats =
     [
         "dd.MM.yyyy", "d.M.yyyy", "d.MM.yyyy", "dd.M.yyyy",
-        "yyyy-MM-dd", "M/d/yyyy", "MM/dd/yyyy"
+        "yyyy-MM-dd", "M/d/yyyy", "MM/dd/yyyy", "d. M. yyyy", "dd. MM. yyyy"
     ];
 
     public CsvImportService(
@@ -42,61 +40,80 @@ public class CsvImportService
 
     // ── Phase 1: Preview ──────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Parses the uploaded CSV file and returns a preview without writing to DB.
-    /// The client shows this to the user for confirmation.
-    /// </summary>
     public async Task<CsvPreviewResult> PreviewAsync(IFormFile file)
     {
-        var lines = await ReadLinesAsync(file);
+        var lines = await ReadRawLinesAsync(file);
+        if (lines.Count == 0)
+        {
+            return new CsvPreviewResult([], ["Soubor je prázdný."], 0, 0);
+        }
+
+        var header = lines[0].Split(';');
+        if (header.Length < 2)
+        {
+            return new CsvPreviewResult([], ["Neplatný formát hlavičky — chybí sloupce s názvy produktů nebo oddělovače středníkem."], 0, 0);
+        }
+
+        var productNames = new List<string>();
+        for (int i = 1; i < header.Length; i++)
+        {
+            productNames.Add(header[i].Trim());
+        }
+
         var existingProducts = await _products.GetAllAsync(includeInactive: true);
         var productByName = existingProducts.ToDictionary(p => p.Name.Trim(), p => p, StringComparer.OrdinalIgnoreCase);
 
         var rows = new List<CsvPreviewRow>();
         var warnings = new List<string>();
+        var newProductNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         int skipped = 0;
 
-        foreach (var (line, lineNumber) in lines.Select((l, i) => (l, i + 2))) // 1-based, skip header
+        foreach (var name in productNames)
         {
-            var parts = line.Split(';');
-            if (parts.Length < 3)
+            if (!string.IsNullOrEmpty(name) && !productByName.ContainsKey(name))
             {
-                warnings.Add($"Řádek {lineNumber}: nedostatečný počet sloupců, přeskočeno.");
+                newProductNames.Add(name);
+            }
+        }
+
+        if (newProductNames.Count > 0)
+        {
+            warnings.Add($"Nové produkty k vytvoření ({newProductNames.Count}): {string.Join(", ", newProductNames)}");
+        }
+
+        for (int i = 1; i < lines.Count; i++)
+        {
+            var line = lines[i];
+            if (string.IsNullOrWhiteSpace(line)) continue;
+
+            var parts = line.Split(';');
+            if (parts.Length < 1 || string.IsNullOrWhiteSpace(parts[0]))
+            {
                 skipped++;
                 continue;
             }
 
             if (!TryParseDate(parts[0].Trim(), out var date))
             {
-                warnings.Add($"Řádek {lineNumber}: nepodporovaný formát data '{parts[0]}', přeskočeno.");
+                warnings.Add($"Řádek {i + 1}: neplatný formát data '{parts[0]}', řádek přeskočen.");
                 skipped++;
                 continue;
             }
 
-            var productName = parts[1].Trim();
-            if (string.IsNullOrEmpty(productName))
+            for (int j = 1; j < parts.Length && (j - 1) < productNames.Count; j++)
             {
-                warnings.Add($"Řádek {lineNumber}: prázdný název produktu, přeskočeno.");
-                skipped++;
-                continue;
+                var valStr = parts[j].Trim().Replace(" ", "").Replace(",", ".");
+                if (string.IsNullOrWhiteSpace(valStr)) continue;
+
+                if (decimal.TryParse(valStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var aumValue))
+                {
+                    var productName = productNames[j - 1];
+                    if (string.IsNullOrEmpty(productName)) continue;
+
+                    string? rowWarning = newProductNames.Contains(productName) ? $"Nový produkt '{productName}'" : null;
+                    rows.Add(new CsvPreviewRow(date, productName, aumValue, 0m, rowWarning));
+                }
             }
-
-            if (!TryParseDecimal(parts[2].Trim(), out var aum))
-            {
-                warnings.Add($"Řádek {lineNumber}: nelze parsovat AUM '{parts[2]}', přeskočeno.");
-                skipped++;
-                continue;
-            }
-
-            decimal monthlyDeposit = 0m;
-            if (parts.Length > 3 && !string.IsNullOrWhiteSpace(parts[3]))
-                TryParseDecimal(parts[3].Trim(), out monthlyDeposit);
-
-            string? rowWarning = null;
-            if (!productByName.ContainsKey(productName))
-                rowWarning = $"Produkt '{productName}' neexistuje — bude automaticky vytvořen.";
-
-            rows.Add(new CsvPreviewRow(date, productName, aum, monthlyDeposit, rowWarning));
         }
 
         return new CsvPreviewResult(rows, warnings, rows.Count, skipped);
@@ -104,17 +121,11 @@ public class CsvImportService
 
     // ── Phase 2: Commit ───────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Commits confirmed rows to the database.
-    /// Auto-creates missing products. Upserts snapshots.
-    /// Recalculates AumSnapshots for each affected date.
-    /// </summary>
     public async Task CommitAsync(CsvCommitRequest request, string userId)
     {
         var allProducts = await _products.GetAllAsync(includeInactive: true);
         var productById = allProducts.ToDictionary(p => p.Id);
 
-        // Group rows by date
         var rowsByDate = request.Rows
             .GroupBy(r => r.Date.Date)
             .OrderBy(g => g.Key);
@@ -131,7 +142,7 @@ public class CsvImportService
 
             foreach (var row in dateGroup)
             {
-                if (!productById.ContainsKey(row.ProductId)) continue;
+                if (!productById.TryGetValue(row.ProductId, out var p)) continue;
 
                 productSnapshots.Add(new ProductSnapshot
                 {
@@ -142,14 +153,23 @@ public class CsvImportService
                     MonthlyDeposit = row.MonthlyDeposit
                 });
 
-                dateTotalAum += row.Aum;
-                dateTotalDeposit += row.MonthlyDeposit;
+                if (p.IncludeInAum && p.IsActive)
+                {
+                    dateTotalAum += row.Aum;
+                    dateTotalDeposit += row.MonthlyDeposit;
+                }
                 aumByProductId[row.ProductId] = row.Aum;
             }
 
-            var pointsPerYear = _calculator.CalculatePointsPerYear(
-                allProducts.Where(p => aumByProductId.ContainsKey(p.Id)),
-                aumByProductId);
+            foreach (var p in allProducts)
+            {
+                if (!aumByProductId.ContainsKey(p.Id) && p.IncludeInAum && p.IsActive)
+                {
+                    dateTotalDeposit += p.MonthlyDeposit;
+                }
+            }
+
+            var pointsPerYear = _calculator.CalculatePointsPerYear(allProducts, aumByProductId);
 
             aumSnapshots.Add(new AumSnapshot
             {
@@ -164,19 +184,32 @@ public class CsvImportService
         await _productSnapshots.UpsertBatchAsync(productSnapshots);
         await _aumSnapshots.UpsertBatchAsync(aumSnapshots);
         await _productSnapshots.SaveChangesAsync();
+
+        // Aktualizace CurrentAum u všech produktů podle jejich nejnovějšího snapshotu
+        foreach (var product in allProducts)
+        {
+            var snaps = await _productSnapshots.GetByProductIdAsync(product.Id);
+            var latest = snaps.OrderByDescending(s => s.Date).FirstOrDefault();
+            if (latest != null)
+            {
+                product.CurrentAum = latest.Aum;
+                if (latest.MonthlyDeposit > 0) product.MonthlyDeposit = latest.MonthlyDeposit;
+                await _products.UpdateAsync(product);
+            }
+        }
+        await _products.SaveChangesAsync();
     }
 
-    // ── Preview with name resolution (maps names → IDs before Commit) ─────────
+    // ── Name resolution (maps names → IDs before Commit) ──────────────────────
 
-    /// <summary>
-    /// Converts CsvPreviewRows to CsvCommitRows by resolving (or creating) product IDs.
-    /// Called server-side when client sends confirmed preview rows.
-    /// </summary>
     public async Task<List<CsvCommitRow>> ResolveProductIdsAsync(
         List<CsvPreviewRow> confirmedRows, string userId)
     {
         var allProducts = await _products.GetAllAsync(includeInactive: true);
         var productByName = allProducts.ToDictionary(p => p.Name.Trim(), p => p, StringComparer.OrdinalIgnoreCase);
+
+        var randomColors = new[] { "#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#8b5cf6", "#ec4899", "#06b6d4", "#ef4444", "#84cc16", "#14b8a6", "#f97316" };
+        var rand = new Random();
 
         var result = new List<CsvCommitRow>();
 
@@ -184,11 +217,74 @@ public class CsvImportService
         {
             if (!productByName.TryGetValue(row.ProductName, out var product))
             {
-                // Auto-create minimal product
+                decimal averageYield = 0m;
+                string commissionFormula = "0";
+                var category = ProductCategory.InvestmentFund;
+                var company = ProductCompany.Other;
+
+                var name = row.ProductName;
+                if (name.Contains("ZFP Investments", StringComparison.OrdinalIgnoreCase))
+                {
+                    averageYield = 5.3m;
+                    commissionFormula = "(AUM/1555200)*24";
+                    company = ProductCompany.ZfpInvestments;
+                }
+                else if (name.Contains("Wood", StringComparison.OrdinalIgnoreCase))
+                {
+                    averageYield = 8.5m;
+                    commissionFormula = "AUM/276360*12";
+                    company = ProductCompany.WoodAndCo;
+                }
+                else if (name.Contains("AVANT", StringComparison.OrdinalIgnoreCase))
+                {
+                    averageYield = 9m;
+                    commissionFormula = "AUM/173340*4";
+                    company = ProductCompany.Avant;
+                }
+                else if (name.Contains("Conseq", StringComparison.OrdinalIgnoreCase))
+                {
+                    averageYield = 8.5m;
+                    commissionFormula = "AUM/100*1.5/1649";
+                    company = ProductCompany.Conseq;
+                }
+                else if (name.Contains("Generali I", StringComparison.OrdinalIgnoreCase))
+                {
+                    averageYield = 6m;
+                    commissionFormula = "AUM/437000*12";
+                    company = ProductCompany.GeneraliInvestments;
+                }
+                else if (name.Contains("ZFP Finance", StringComparison.OrdinalIgnoreCase))
+                {
+                    averageYield = 0m;
+                    commissionFormula = "0";
+                    company = ProductCompany.ZfpFinance;
+                    category = ProductCategory.Bonds;
+                }
+                else if (name.Contains("ZFP Gold", StringComparison.OrdinalIgnoreCase))
+                {
+                    averageYield = 6m;
+                    commissionFormula = "AUM/100000";
+                    company = ProductCompany.ZfpGold;
+                    category = ProductCategory.Commodities;
+                }
+                else if (name.Contains("JT", StringComparison.OrdinalIgnoreCase) || name.Contains("J&T", StringComparison.OrdinalIgnoreCase))
+                {
+                    averageYield = 6.5m;
+                    commissionFormula = "AUM/100*1.0/1649";
+                }
+
                 product = new Product
                 {
                     UserId = userId,
                     Name = row.ProductName,
+                    Category = category,
+                    Company = company,
+                    ColorHex = randomColors[rand.Next(randomColors.Length)],
+                    AverageYield = averageYield,
+                    CommissionFormula = commissionFormula,
+                    MonthlyDeposit = 0m,
+                    IncludeInAum = true,
+                    CurrentAum = 0m,
                     IsActive = true
                 };
                 await _products.AddAsync(product);
@@ -196,7 +292,8 @@ public class CsvImportService
                 productByName[product.Name] = product;
             }
 
-            result.Add(new CsvCommitRow(row.Date, product.Id, row.Aum, row.MonthlyDeposit));
+            decimal deposit = row.MonthlyDeposit > 0 ? row.MonthlyDeposit : product.MonthlyDeposit;
+            result.Add(new CsvCommitRow(row.Date, product.Id, row.Aum, deposit));
         }
 
         return result;
@@ -204,14 +301,11 @@ public class CsvImportService
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static async Task<List<string>> ReadLinesAsync(IFormFile file)
+    private static async Task<List<string>> ReadRawLinesAsync(IFormFile file)
     {
         using var reader = new StreamReader(file.OpenReadStream());
         var all = await reader.ReadToEndAsync();
-        var lines = all.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).ToList();
-        // Skip header row
-        if (lines.Count > 0) lines.RemoveAt(0);
-        return lines;
+        return all.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries).ToList();
     }
 
     private static bool TryParseDate(string s, out DateTime result)
@@ -219,12 +313,5 @@ public class CsvImportService
         return DateTime.TryParseExact(s, DateFormats,
             CultureInfo.InvariantCulture, DateTimeStyles.None, out result)
             || DateTime.TryParse(s, new CultureInfo("cs-CZ"), DateTimeStyles.None, out result);
-    }
-
-    private static bool TryParseDecimal(string s, out decimal result)
-    {
-        // Czech locale uses comma as decimal separator
-        var normalized = s.Replace(" ", "").Replace(",", ".");
-        return decimal.TryParse(normalized, NumberStyles.Any, CultureInfo.InvariantCulture, out result);
     }
 }

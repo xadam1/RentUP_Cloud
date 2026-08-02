@@ -1,4 +1,4 @@
-﻿CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory" (
     "MigrationId" character varying(150) NOT NULL,
     "ProductVersion" character varying(32) NOT NULL,
     CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
@@ -56,10 +56,15 @@ BEGIN
         "MonthlyDeposit" numeric(18,2) NOT NULL,
         "CommissionFormula" character varying(500) NOT NULL,
         "Order" integer NOT NULL,
+        "IncludeInAum" boolean NOT NULL DEFAULT TRUE,
+        "CurrentAum" numeric(18,2) NOT NULL DEFAULT 0.0,
         "IsActive" boolean NOT NULL,
         CONSTRAINT "PK_Products" PRIMARY KEY ("Id")
     );
     END IF;
+
+    ALTER TABLE "Products" ADD COLUMN IF NOT EXISTS "IncludeInAum" boolean NOT NULL DEFAULT TRUE;
+    ALTER TABLE "Products" ADD COLUMN IF NOT EXISTS "CurrentAum" numeric(18,2) NOT NULL DEFAULT 0.0;
 END $EF$;
 
 DO $EF$

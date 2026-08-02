@@ -12,6 +12,8 @@ public record ProductDto(
     decimal MonthlyDeposit,
     string CommissionFormula,
     int Order,
+    bool IncludeInAum,
+    decimal CurrentAum,
     bool IsActive
 );
 
@@ -23,7 +25,9 @@ public record CreateProductRequest(
     decimal AverageYield,
     decimal MonthlyDeposit,
     string CommissionFormula,
-    int Order
+    int Order,
+    bool IncludeInAum = true,
+    decimal CurrentAum = 0m
 );
 
 public record UpdateProductRequest(
@@ -35,5 +39,7 @@ public record UpdateProductRequest(
     decimal MonthlyDeposit,
     string CommissionFormula,
     int Order,
+    bool IncludeInAum,
+    decimal CurrentAum,
     bool IsActive
 );
