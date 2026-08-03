@@ -245,7 +245,7 @@ public class AumController : ControllerBase
             {
                 UserId = userId,
                 Name = "Amundi CR",
-                Category = ProductCategory.InvestmentFund,
+                Category = ProductCategory.MoneyMarket,
                 Company = ProductCompany.Amundi,
                 ColorHex = "#6366f1",
                 CurrentAum = 6384000m,

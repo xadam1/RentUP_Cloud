@@ -27,6 +27,9 @@ public enum ProductCategory
     // Nemovitosti
     RealEstate = 6,
 
+    // Peněžní trh
+    MoneyMarket = 7,
+
     // Ostatní
     Other = 99
 }
