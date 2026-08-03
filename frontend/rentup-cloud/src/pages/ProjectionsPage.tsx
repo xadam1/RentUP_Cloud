@@ -4,8 +4,8 @@ import {
   ResponsiveContainer
 } from 'recharts'
 import { 
-  Layers, Wallet, Sparkles, Calendar, TrendingUp, CheckSquare, 
-  Square
+  Layers, Wallet, Sparkles, Calendar, CheckSquare, 
+  Square, Minus, Plus, Info
 } from 'lucide-react'
 import { aumApi, type ProjectionPoint, type DashboardSummary } from '@/lib/api'
 
@@ -15,6 +15,32 @@ const formatCurrencyFull = (value: number) => {
 
 const formatPoints = (value: number) => {
   return `${Math.round(value).toLocaleString('cs-CZ')} b.`
+}
+
+const formatAbbrevVal = (value: number) => {
+  if (value >= 1_000_000_000) {
+    return `${(value / 1_000_000_000).toFixed(2).replace('.', ',')} mld.`
+  }
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1).replace('.', ',')} M`
+  }
+  if (value >= 100_000) {
+    return `${(value / 1_000).toFixed(0).replace('.', ',')} k`
+  }
+  return Math.round(value).toLocaleString('cs-CZ')
+}
+
+const formatChartAxis = (val: number) => {
+  if (val >= 1_000_000_000) {
+    return `${(val / 1_000_000_000).toFixed(1).replace('.', ',')} mld. Kč`
+  }
+  if (val >= 1_000_000) {
+    return `${(val / 1_000_000).toFixed(0).replace('.', ',')} mil. Kč`
+  }
+  if (val >= 1_000) {
+    return `${(val / 1_000).toFixed(0).replace('.', ',')} k Kč`
+  }
+  return `${val} Kč`
 }
 
 function CustomChartTooltip({ active, payload, label }: any) {
@@ -143,6 +169,7 @@ export default function ProjectionsPage() {
   const totalPayout = annualData.reduce((acc, r) => acc + r.payoutYear, 0)
   const totalPoints = annualData.reduce((acc, r) => acc + r.pointsYear, 0)
   const finalMonthPayout = annualData.length > 0 ? annualData[annualData.length - 1].payoutMonth : (summary?.estimatedCommissionMonthCzk || 0)
+  const averageYearlyPoints = years > 0 ? totalPoints / years : 0
 
   // Bottom table footer summary calculation based on selected rows
   const { summaryPoints, summaryPayout, isSubsetSelected } = useMemo(() => {
@@ -183,13 +210,13 @@ export default function ProjectionsPage() {
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-in fade-in duration-300">
       {/* Explanation Banner */}
-      <div className="modern-card p-4 border border-zinc-200 dark:border-zinc-800 bg-blue-50/50 dark:bg-blue-950/20 flex items-start sm:items-center gap-3 text-sm text-zinc-600 dark:text-zinc-300 shadow-xs">
+      <div className="modern-card p-4 border border-zinc-200 dark:border-zinc-800 bg-blue-50/50 dark:bg-blue-950/20 flex items-start sm:items-center gap-3.5 text-sm text-zinc-600 dark:text-zinc-300 shadow-xs">
         <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
-          <TrendingUp className="w-4 h-4 stroke-[2.5]" />
+          <Info className="w-4 h-4 stroke-[2.5]" />
         </div>
         <div className="flex-1 text-xs sm:text-sm leading-relaxed">
-          <span className="font-semibold text-zinc-900 dark:text-white">Modelování budoucích příjmů a stavu portfolia: </span>
-          Kalkulace vyjadřuje budoucí hodnotu Vašeho spravovaného majetku při zachování současných parametrů (složené úročení stávajících zprostředkovaných drah a měsíčních vkladů), bez nutnosti získávání nových obchodů.
+          <strong className="text-zinc-900 dark:text-white font-bold">Jak funguje projekce budoucích příjmů: </strong>
+          Model znázorňuje budoucí vývoj Vašeho spravovaného majetku za předpokladu, že již nebudete přidávat nové investiční obchody ani zvyšovat pravidelné investice. Vychází z Vašeho <strong className="text-zinc-800 dark:text-zinc-200 font-semibold">aktuálního AUM</strong> a stávajících <strong className="text-zinc-800 dark:text-zinc-200 font-semibold">měsíčních vkladů</strong> u produktů (zaškrtnutých do AUM v Dashboardu), které zhodnocuje složeným úrokem v čase. Díky tomu roste jak AUM, tak i Váš pasivní provizní příjem a bodová produkce.
         </div>
       </div>
 
@@ -202,16 +229,16 @@ export default function ProjectionsPage() {
           </div>
           <div>
             <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Cílový stav AUM</p>
-            <div className="flex items-baseline gap-1.5">
-              <h3 className="text-2xl sm:text-3xl font-bold font-mono text-blue-600 dark:text-blue-400 tracking-tight tabular-nums">
-                {Math.round(targetAum).toLocaleString('cs-CZ')}
+            <div className="flex items-baseline gap-1.5 cursor-help" title={formatCurrencyFull(targetAum)}>
+              <h3 className="text-2xl sm:text-3xl font-bold font-mono text-blue-600 dark:text-blue-400 tracking-tight tabular-nums truncate">
+                {formatAbbrevVal(targetAum)}
               </h3>
-              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">Kč</span>
+              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400 flex-shrink-0">Kč</span>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
-            <span>Horizont predikce:</span>
-            <span className="font-semibold text-zinc-700 dark:text-zinc-300">za {years} {years === 1 ? 'rok' : years >= 2 && years <= 4 ? 'roky' : 'let'}</span>
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between gap-2">
+            <span className="truncate">Horizont predikce:</span>
+            <span className="font-semibold text-zinc-700 dark:text-zinc-300 whitespace-nowrap">za {years} {years === 1 ? 'rok' : years >= 2 && years <= 4 ? 'roky' : 'let'}</span>
           </div>
         </div>
 
@@ -223,16 +250,18 @@ export default function ProjectionsPage() {
           </div>
           <div className="relative z-10">
             <p className="text-xs font-bold text-emerald-100 uppercase tracking-wider mb-2">Celková výplata (součet)</p>
-            <div className="flex items-baseline gap-1.5">
-              <h3 className="text-2xl sm:text-3xl font-bold font-mono text-white tracking-tight tabular-nums">
-                {Math.round(totalPayout).toLocaleString('cs-CZ')}
+            <div className="flex items-baseline gap-1.5 cursor-help" title={formatCurrencyFull(totalPayout)}>
+              <h3 className="text-2xl sm:text-3xl font-bold font-mono text-white tracking-tight tabular-nums truncate">
+                {formatAbbrevVal(totalPayout)}
               </h3>
-              <span className="text-sm font-medium text-emerald-100">Kč</span>
+              <span className="text-sm font-medium text-emerald-100 flex-shrink-0">Kč</span>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-white/15 text-xs text-emerald-100 relative z-10 flex items-center justify-between">
-            <span>Měsíčně v Cíli:</span>
-            <span className="font-mono font-bold bg-white/15 px-2 py-0.5 rounded-full text-[11px]">{formatCurrencyFull(finalMonthPayout)}</span>
+          <div className="mt-4 pt-3 border-t border-white/15 text-xs text-emerald-100 relative z-10 flex items-center justify-between gap-2">
+            <span className="truncate">Měsíční průměr:</span>
+            <span className="font-mono font-bold bg-white/15 px-2 py-0.5 rounded-full text-[11px] whitespace-nowrap cursor-help" title={formatCurrencyFull(finalMonthPayout)}>
+              {formatAbbrevVal(finalMonthPayout)} Kč / měs.
+            </span>
           </div>
         </div>
 
@@ -243,16 +272,18 @@ export default function ProjectionsPage() {
           </div>
           <div>
             <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Celkové body (součet)</p>
-            <div className="flex items-baseline gap-1.5">
-              <h3 className="text-2xl sm:text-3xl font-bold font-mono text-zinc-900 dark:text-white tracking-tight tabular-nums">
-                {Math.round(totalPoints).toLocaleString('cs-CZ')}
+            <div className="flex items-baseline gap-1.5 cursor-help" title={formatPoints(totalPoints)}>
+              <h3 className="text-2xl sm:text-3xl font-bold font-mono text-zinc-900 dark:text-white tracking-tight tabular-nums truncate">
+                {formatAbbrevVal(totalPoints)}
               </h3>
-              <span className="text-sm font-semibold text-zinc-500">b.</span>
+              <span className="text-sm font-semibold text-zinc-500 flex-shrink-0">b.</span>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
-            <span>Průměr pro daný horizont:</span>
-            <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300">{formatPoints(years > 0 ? totalPoints / years : 0)} / rok</span>
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between gap-2">
+            <span className="truncate">Roční průměr:</span>
+            <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300 whitespace-nowrap cursor-help" title={formatPoints(averageYearlyPoints)}>
+              {formatAbbrevVal(averageYearlyPoints)} b. / rok
+            </span>
           </div>
         </div>
 
@@ -263,26 +294,56 @@ export default function ProjectionsPage() {
           </div>
           <div>
             <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Počet roků (Max 30 let)</p>
-            <div className="flex items-center gap-2 mt-1">
-              <input 
-                type="number" 
-                min="1" 
-                max="30" 
-                value={inputVal}
-                onChange={handleInputChange}
-                onBlur={handleInputBlur}
-                className="w-24 bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white text-2xl font-bold font-mono rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-center tabular-nums"
-              />
-              <span className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">let</span>
+            <div className="inline-flex items-center rounded-xl bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 p-1 mt-1 shadow-xs w-full max-w-[170px] justify-between">
+              <button 
+                type="button"
+                onClick={() => {
+                  const val = Math.max(1, years - 1)
+                  setYears(val)
+                  setInputVal(String(val))
+                }}
+                disabled={years <= 1}
+                className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200 shadow-xs flex items-center justify-center transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer border border-zinc-200/60 dark:border-zinc-600/60 flex-shrink-0"
+                title="O rok méně"
+              >
+                <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
+              </button>
+              
+              <div className="flex items-center justify-center flex-1 px-1">
+                <input 
+                  type="number" 
+                  min="1" 
+                  max="30" 
+                  value={inputVal}
+                  onChange={handleInputChange}
+                  onBlur={handleInputBlur}
+                  className="w-11 bg-transparent text-zinc-900 dark:text-white text-lg font-bold font-mono text-center focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none tabular-nums"
+                />
+                <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500">let</span>
+              </div>
+
+              <button 
+                type="button"
+                onClick={() => {
+                  const val = Math.min(30, years + 1)
+                  setYears(val)
+                  setInputVal(String(val))
+                }}
+                disabled={years >= 30}
+                className="w-8 h-8 rounded-lg bg-white dark:bg-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-600 text-zinc-700 dark:text-zinc-200 shadow-xs flex items-center justify-center transition-all disabled:opacity-30 disabled:pointer-events-none cursor-pointer border border-zinc-200/60 dark:border-zinc-600/60 flex-shrink-0"
+                title="O rok více"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              </button>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-start gap-1 flex-wrap">
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-start gap-1.5 flex-wrap">
             {[5, 10, 15, 20, 30].map(py => (
               <button
                 key={py}
                 type="button"
                 onClick={() => handlePresetClick(py)}
-                className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                className={`px-2.5 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
                   years === py
                     ? 'bg-blue-600 text-white shadow-xs'
                     : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
@@ -301,7 +362,7 @@ export default function ProjectionsPage() {
           <div>
             <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight">Vývoj AUM v jednotlivých letech</h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Kumulativní růst AUM se složenou roční úrokovou mírou v horizontu do {years} let
+              Kumulativní růst AUM se složené úročící míře a měsíčními vklady v horizontu do {years} let
             </p>
           </div>
           <div className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
@@ -317,12 +378,12 @@ export default function ProjectionsPage() {
         ) : chartData.length <= 1 ? (
           <div className="h-[340px] flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 text-sm border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
             <p className="font-semibold text-zinc-600 dark:text-zinc-300">Zatím nebyly nalezeny žádné produkty pro výpočet.</p>
-            <p className="text-xs mt-1 text-zinc-500">Zaregistrujte prosím v Dashboardu produkty se zaškrtnutím vkladů a úroku do AUM.</p>
+            <p className="text-xs mt-1 text-zinc-500">Zaregistrujte prosím v Dashboardu produkty se zaškrtnutým vkladem a úrokem do AUM.</p>
           </div>
         ) : (
           <div className="h-[340px] w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={{ top: 10, right: 15, left: 10, bottom: 5 }}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
                 <defs>
                   <linearGradient id="aumGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.35}/>
@@ -339,11 +400,11 @@ export default function ProjectionsPage() {
                   minTickGap={25}
                 />
                 <YAxis 
-                  tickFormatter={v => `${(v / 1_000_000).toFixed(0)} mil. Kč`} 
+                  tickFormatter={formatChartAxis} 
                   tick={{ fill: '#71717a', fontSize: 11, fontWeight: 700 }} 
                   axisLine={false} 
                   tickLine={false} 
-                  width={80}
+                  width={95}
                 />
                 <RechartsTooltip content={<CustomChartTooltip />} />
                 <Area 
