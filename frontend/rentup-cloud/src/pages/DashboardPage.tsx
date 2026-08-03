@@ -12,9 +12,13 @@ import {
   X,
   History,
   ChevronDown,
-  CheckCircle2
+  CheckCircle2,
+  GripVertical,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
-import { aumApi, type DashboardSummary, type AumSnapshot, type ProductDashboardItem } from '@/lib/api';
+import { aumApi, productsApi, type DashboardSummary, type AumSnapshot, type ProductDashboardItem } from '@/lib/api';
 import { useTheme } from '@/contexts/ThemeContext';
 import ProductEditModal from '@/components/dashboard/ProductEditModal';
 import CsvImportButton from '@/components/dashboard/CsvImportButton';
@@ -93,6 +97,39 @@ const getInitials = (name: string) => {
   return (name.slice(0, 2) || 'PR').toUpperCase();
 };
 
+interface CustomPieTooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    name: string;
+    value: number;
+    payload: { name: string; value: number; color: string };
+  }>;
+  totalAum: number;
+}
+
+const CustomPieTooltip = ({ active, payload, totalAum }: CustomPieTooltipProps) => {
+  if (!active || !payload || !payload.length) return null;
+  const data = payload[0].payload;
+  const percent = totalAum > 0 ? ((data.value / totalAum) * 100).toFixed(1) : '0';
+
+  return (
+    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3 shadow-xl text-xs space-y-1 z-50 pointer-events-none">
+      <div className="flex items-center gap-2 font-bold text-zinc-900 dark:text-white">
+        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: data.color }} />
+        <span className="truncate max-w-[200px]">{data.name}</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 text-zinc-600 dark:text-zinc-300 pt-1">
+        <span>Objem:</span>
+        <span className="font-bold text-zinc-900 dark:text-white tabular-nums">{formatCurrencyFull(data.value)}</span>
+      </div>
+      <div className="flex items-center justify-between gap-4 text-zinc-500 dark:text-zinc-400">
+        <span>Podíl na AUM:</span>
+        <span className="font-semibold text-blue-600 dark:text-blue-400 tabular-nums">{percent} %</span>
+      </div>
+    </div>
+  );
+};
+
 export default function DashboardPage() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [snapshots, setSnapshots] = useState<AumSnapshot[]>([]);
@@ -106,9 +143,69 @@ export default function DashboardPage() {
 
   // UI state for charts & period comparison
   const [distributionView, setDistributionView] = useState<'categories' | 'products'>('products');
-  const [historyPeriod, setHistoryPeriod] = useState<'1M' | '3M' | '6M' | 'YTD' | '1R' | 'MAX'>('YTD');
+  const [historyPeriod, setHistoryPeriod] = useState<'1M' | '3M' | '6M' | 'YTD' | '1R' | 'MAX'>('MAX');
   const [isPeriodMenuOpen, setIsPeriodMenuOpen] = useState(false);
   const [comparisonPeriod, setComparisonPeriod] = useState(() => localStorage.getItem('rentup_dashboard_comparison_period') || 'YTD');
+
+  // Sorting & Reordering states
+  const [sortField, setSortField] = useState<'name' | 'currentAum' | 'share' | 'monthlyDeposit' | 'includeInAum' | 'income' | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [localProducts, setLocalProducts] = useState<ProductDashboardItem[]>([]);
+
+  useEffect(() => {
+    setLocalProducts(summary?.products || []);
+  }, [summary?.products]);
+
+  const handleSort = (field: 'name' | 'currentAum' | 'share' | 'monthlyDeposit' | 'includeInAum' | 'income') => {
+    if (sortField === field) {
+      if (sortOrder === 'desc') setSortOrder('asc');
+      else {
+        setSortField(null);
+        setSortOrder('desc');
+      }
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
+  const handleDragStart = (idx: number, e: React.DragEvent) => {
+    if (sortField) return;
+    setDraggedIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (idx: number, e: React.DragEvent) => {
+    if (sortField || draggedIdx === null) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverIdx !== idx) setDragOverIdx(idx);
+  };
+
+  const handleDrop = async (idx: number, e: React.DragEvent) => {
+    e.preventDefault();
+    if (sortField || draggedIdx === null || draggedIdx === idx) {
+      setDraggedIdx(null);
+      setDragOverIdx(null);
+      return;
+    }
+    const newList = [...localProducts];
+    const [movedItem] = newList.splice(draggedIdx, 1);
+    newList.splice(idx, 0, movedItem);
+    
+    setLocalProducts(newList);
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+
+    try {
+      await productsApi.reorder(newList.map(p => p.id));
+      loadData();
+    } catch {
+      setLocalProducts(summary?.products || []);
+    }
+  };
 
   const { theme } = useTheme();
   const isDark = theme === 'dark';
@@ -187,7 +284,40 @@ export default function DashboardPage() {
   }, [snapshots, comparisonPeriod]);
 
   // Products filtering & counts
-  const allProducts = useMemo(() => summary?.products || [], [summary?.products]);
+  const allProducts = useMemo(() => {
+    if (!sortField) return localProducts;
+    return [...localProducts].sort((a, b) => {
+      let valA: any = 0;
+      let valB: any = 0;
+      switch (sortField) {
+        case 'name':
+          valA = a.name.toLowerCase();
+          valB = b.name.toLowerCase();
+          return sortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        case 'currentAum':
+          valA = a.currentAum;
+          valB = b.currentAum;
+          break;
+        case 'share':
+          valA = a.portfolioSharePercent || 0;
+          valB = b.portfolioSharePercent || 0;
+          break;
+        case 'monthlyDeposit':
+          valA = a.monthlyDeposit;
+          valB = b.monthlyDeposit;
+          break;
+        case 'includeInAum':
+          valA = a.includeInAum ? 1 : 0;
+          valB = b.includeInAum ? 1 : 0;
+          break;
+        case 'income':
+          valA = a.monthlyIncomeCzk || (a.yearlyPoints * (summary?.basePointValue || 150)) / 12 || 0;
+          valB = b.monthlyIncomeCzk || (b.yearlyPoints * (summary?.basePointValue || 150)) / 12 || 0;
+          break;
+      }
+      return sortOrder === 'asc' ? valA - valB : valB - valA;
+    });
+  }, [localProducts, sortField, sortOrder, summary?.basePointValue]);
   const includedProducts = useMemo(() => allProducts.filter((p: ProductDashboardItem) => p.includeInAum), [allProducts]);
   const includedCount = includedProducts.length;
   const totalCount = allProducts.length;
@@ -374,7 +504,21 @@ export default function DashboardPage() {
         <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-transparent">
           <div>
             <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight">Detail produktů pod správou</h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">Přehled aktivních produktů zařazených v portfoliu.</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                {sortField ? 'Aktivní řazení podle sloupců. Pro změnu pořadí tahem jej vypněte.' : 'Táhnutím za úchop vlevo můžete přizpůsobit výchozí pořadí zobrazení aktiv.'}
+              </p>
+              {sortField && (
+                <button 
+                  type="button" 
+                  onClick={() => { setSortField(null); setSortOrder('desc'); }}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 rounded-md transition-colors cursor-pointer border border-blue-200 dark:border-blue-500/20"
+                >
+                  <X className="w-3 h-3" />
+                  <span>Vrátit vlastní pořadí</span>
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <CsvImportButton onImported={loadData} />
@@ -391,27 +535,85 @@ export default function DashboardPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
-              <tr className="bg-zinc-50/50 dark:bg-zinc-800/20 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 text-[10px] uppercase tracking-widest font-bold">
-                <th className="px-6 py-4">Produkt</th>
-                <th className="px-6 py-4">Aktuální stav AUM</th>
-                <th className="px-6 py-4">Podíl na AUM</th>
-                <th className="px-6 py-4">Měs. vklad</th>
-                <th className="px-6 py-4 text-center">Započítáno</th>
-                <th className="px-6 py-4 text-right">Příjem / měsíc</th>
+              <tr className="bg-zinc-50/50 dark:bg-zinc-800/20 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 text-[10px] uppercase tracking-widest font-bold select-none">
+                <th className="px-3 py-4 w-10 text-center">
+                  <span className="sr-only">Pořadí</span>
+                </th>
+                <th className="px-6 py-4 cursor-pointer hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors" onClick={() => handleSort('name')}>
+                  <div className="flex items-center gap-1.5">
+                    <span>Produkt</span>
+                    {sortField === 'name' ? (
+                      sortOrder === 'desc' ? <ArrowDown className="w-3.5 h-3.5 text-blue-500" /> : <ArrowUp className="w-3.5 h-3.5 text-blue-500" />
+                    ) : <ArrowUpDown className="w-3 h-3 text-zinc-400 opacity-40" />}
+                  </div>
+                </th>
+                <th className="px-6 py-4 cursor-pointer hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors" onClick={() => handleSort('currentAum')}>
+                  <div className="flex items-center gap-1.5">
+                    <span>Aktuální stav AUM</span>
+                    {sortField === 'currentAum' ? (
+                      sortOrder === 'desc' ? <ArrowDown className="w-3.5 h-3.5 text-blue-500" /> : <ArrowUp className="w-3.5 h-3.5 text-blue-500" />
+                    ) : <ArrowUpDown className="w-3 h-3 text-zinc-400 opacity-40" />}
+                  </div>
+                </th>
+                <th className="px-6 py-4 cursor-pointer hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors" onClick={() => handleSort('share')}>
+                  <div className="flex items-center gap-1.5">
+                    <span>Podíl na AUM</span>
+                    {sortField === 'share' ? (
+                      sortOrder === 'desc' ? <ArrowDown className="w-3.5 h-3.5 text-blue-500" /> : <ArrowUp className="w-3.5 h-3.5 text-blue-500" />
+                    ) : <ArrowUpDown className="w-3 h-3 text-zinc-400 opacity-40" />}
+                  </div>
+                </th>
+                <th className="px-6 py-4 cursor-pointer hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors" onClick={() => handleSort('monthlyDeposit')}>
+                  <div className="flex items-center gap-1.5">
+                    <span>Měs. vklad</span>
+                    {sortField === 'monthlyDeposit' ? (
+                      sortOrder === 'desc' ? <ArrowDown className="w-3.5 h-3.5 text-blue-500" /> : <ArrowUp className="w-3.5 h-3.5 text-blue-500" />
+                    ) : <ArrowUpDown className="w-3 h-3 text-zinc-400 opacity-40" />}
+                  </div>
+                </th>
+                <th className="px-6 py-4 text-center cursor-pointer hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors" onClick={() => handleSort('includeInAum')}>
+                  <div className="inline-flex items-center justify-center gap-1.5">
+                    <span>Započítáno</span>
+                    {sortField === 'includeInAum' ? (
+                      sortOrder === 'desc' ? <ArrowDown className="w-3.5 h-3.5 text-blue-500" /> : <ArrowUp className="w-3.5 h-3.5 text-blue-500" />
+                    ) : <ArrowUpDown className="w-3 h-3 text-zinc-400 opacity-40" />}
+                  </div>
+                </th>
+                <th className="px-6 py-4 text-right cursor-pointer hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors" onClick={() => handleSort('income')}>
+                  <div className="inline-flex items-center justify-end gap-1.5 w-full">
+                    <span>Příjem / měsíc</span>
+                    {sortField === 'income' ? (
+                      sortOrder === 'desc' ? <ArrowDown className="w-3.5 h-3.5 text-blue-500" /> : <ArrowUp className="w-3.5 h-3.5 text-blue-500" />
+                    ) : <ArrowUpDown className="w-3 h-3 text-zinc-400 opacity-40" />}
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/50 text-sm">
               {allProducts.length > 0 ? (
-                allProducts.map((item: ProductDashboardItem) => {
+                allProducts.map((item: ProductDashboardItem, index: number) => {
                   const color = item.colorHex || '#3b82f6';
                   const initials = getInitials(item.name);
                   const catLabel = categoryLabels[item.category as string] ?? categoryLabels[String(item.category)] ?? item.category;
                   return (
                     <tr
                       key={item.id}
+                      draggable={!sortField}
+                      onDragStart={(e) => handleDragStart(index, e)}
+                      onDragOver={(e) => handleDragOver(index, e)}
+                      onDrop={(e) => handleDrop(index, e)}
                       onClick={() => handleRowClick(item)}
-                      className="table-row-hover transition-colors cursor-pointer group/row"
+                      className={`table-row-hover transition-colors cursor-pointer group/row ${
+                        dragOverIdx === index ? 'bg-blue-50/50 dark:bg-blue-500/10 border-t-2 border-blue-500' : ''
+                      }`}
                     >
+                      <td 
+                        className="px-3 py-4 text-zinc-400 hover:text-zinc-600 dark:text-zinc-600 dark:hover:text-zinc-400 text-center select-none cursor-grab active:cursor-grabbing"
+                        onClick={(e) => e.stopPropagation()}
+                        title={sortField ? 'Pro změnu pořadí vypněte řazení sloupců' : 'Táhnutím přizpůsobíte výchozí pořadí (ukládá se do databáze)'}
+                      >
+                        <GripVertical className={`w-4 h-4 mx-auto transition-opacity ${sortField ? 'opacity-20 cursor-not-allowed' : 'opacity-60 hover:opacity-100'}`} />
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
                           <div 
@@ -472,7 +674,7 @@ export default function DashboardPage() {
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-zinc-400 dark:text-zinc-500 font-medium">
+                  <td colSpan={7} className="py-12 text-center text-zinc-400 dark:text-zinc-500 font-medium">
                     Zatím nemáte zaregistrovaná žádná investiční aktiva.
                   </td>
                 </tr>
@@ -480,6 +682,7 @@ export default function DashboardPage() {
             </tbody>
             <tfoot className="bg-zinc-50/50 dark:bg-zinc-800/20 border-t border-zinc-200 dark:border-zinc-800">
               <tr>
+                <td className="px-3 py-5"></td>
                 <td className="px-6 py-5 text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
                   CELKEM PORTFOLIO
                 </td>
@@ -581,18 +784,7 @@ export default function DashboardPage() {
                           <Cell key={`cell-${index}`} fill={d.color} stroke={isDark ? '#18181b' : '#ffffff'} strokeWidth={2} />
                         ))}
                       </Pie>
-                      <Tooltip
-                        formatter={(val: any) => [formatCurrencyFull(Number(val)), 'Objem']}
-                        contentStyle={{
-                          backgroundColor: isDark ? '#18181b' : '#ffffff',
-                          borderColor: isDark ? '#27272a' : '#e4e4e7',
-                          borderRadius: '0.75rem',
-                          fontSize: '12px',
-                          fontWeight: 'bold',
-                          color: isDark ? '#ffffff' : '#09090b',
-                          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
-                        }}
-                      />
+                      <Tooltip content={(props: any) => <CustomPieTooltip {...props} totalAum={summary?.totalAum || 0} />} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>

@@ -31,6 +31,8 @@ export const productsApi = {
     api.post<{ valid: boolean; error?: string }>('/api/products/validate-formula', JSON.stringify(formula), {
       headers: { 'Content-Type': 'application/json' },
     }),
+  reorder: (orderedIds: string[]) =>
+    api.post('/api/products/reorder', orderedIds),
 }
 
 export const aumApi = {

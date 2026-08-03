@@ -14,12 +14,14 @@ namespace RentUP.Cloud.Api.Controllers;
 public class ProductsController : ControllerBase
 {
     private readonly IProductRepository _repo;
+    private readonly IAumSnapshotRepository _aum;
     private readonly MathParserService _math;
     private readonly ICurrentUserService _user;
 
-    public ProductsController(IProductRepository repo, MathParserService math, ICurrentUserService user)
+    public ProductsController(IProductRepository repo, IAumSnapshotRepository aum, MathParserService math, ICurrentUserService user)
     {
         _repo = repo;
+        _aum = aum;
         _math = math;
         _user = user;
     }
@@ -62,6 +64,7 @@ public class ProductsController : ControllerBase
 
         await _repo.AddAsync(product);
         await _repo.SaveChangesAsync();
+        await SyncTodayAumSnapshotAsync();
         return CreatedAtAction(nameof(GetById), new { id = product.Id }, ToDto(product));
     }
 
@@ -88,6 +91,7 @@ public class ProductsController : ControllerBase
 
         await _repo.UpdateAsync(product);
         await _repo.SaveChangesAsync();
+        await SyncTodayAumSnapshotAsync();
         return Ok(ToDto(product));
     }
 
@@ -97,9 +101,25 @@ public class ProductsController : ControllerBase
         var product = await _repo.GetByIdAsync(id);
         if (product is null) return NotFound();
 
-        // Soft delete — keep for historical data integrity
-        product.IsActive = false;
-        await _repo.UpdateAsync(product);
+        await _repo.DeleteAsync(id);
+        await _repo.SaveChangesAsync();
+        await SyncTodayAumSnapshotAsync();
+        return NoContent();
+    }
+
+    [HttpPost("reorder")]
+    public async Task<IActionResult> Reorder([FromBody] List<Guid> orderedIds)
+    {
+        var products = await _repo.GetAllAsync(includeInactive: false);
+        for (int i = 0; i < orderedIds.Count; i++)
+        {
+            var p = products.FirstOrDefault(x => x.Id == orderedIds[i]);
+            if (p != null && p.Order != i)
+            {
+                p.Order = i;
+                await _repo.UpdateAsync(p);
+            }
+        }
         await _repo.SaveChangesAsync();
         return NoContent();
     }
@@ -111,6 +131,42 @@ public class ProductsController : ControllerBase
         if (_math.IsValid(formula, out var error))
             return Ok(new { valid = true });
         return BadRequest(new { valid = false, error });
+    }
+
+    private async Task SyncTodayAumSnapshotAsync()
+    {
+        var allProducts = await _repo.GetAllAsync(includeInactive: false);
+        decimal totalAum = 0m;
+        decimal totalDeposit = 0m;
+        decimal yearlyPoints = 0m;
+
+        foreach (var p in allProducts.Where(x => x.IncludeInAum))
+        {
+            totalAum += p.CurrentAum;
+            totalDeposit += p.MonthlyDeposit;
+            try
+            {
+                yearlyPoints += _math.Evaluate(p.CommissionFormula, p.CurrentAum);
+            }
+            catch { }
+        }
+
+        if (totalAum > 0 || totalDeposit > 0 || allProducts.Count > 0)
+        {
+            var today = DateTime.UtcNow.Date;
+            await _aum.UpsertBatchAsync(new[]
+            {
+                new AumSnapshot
+                {
+                    UserId = _user.UserId!,
+                    Date = today,
+                    TotalAum = totalAum,
+                    TotalMonthlyDeposit = totalDeposit,
+                    PointsPerYear = yearlyPoints
+                }
+            });
+            await _aum.SaveChangesAsync();
+        }
     }
 
     private static ProductDto ToDto(Product p) => new(
