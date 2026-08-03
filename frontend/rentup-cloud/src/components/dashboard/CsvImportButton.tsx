@@ -48,10 +48,10 @@ export default function CsvImportButton({ onImported }: Props) {
     <>
       <button
         onClick={() => fileRef.current?.click()}
-        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-all duration-150 shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:-translate-y-px flex-shrink-0"
+        className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all shadow-sm border border-zinc-200 dark:border-zinc-700 cursor-pointer"
       >
-        <Upload className="w-4 h-4" />
-        <span>Import z CSV</span>
+        <Upload className="w-3.5 h-3.5" />
+        <span>Importovat</span>
       </button>
       <input
         ref={fileRef}
