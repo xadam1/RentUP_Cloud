@@ -17,7 +17,7 @@ public class UserSettings
     /// Used as the czkPerPoint multiplier in CalculationService.CalculateFutureProjections.
     /// Maps from legacy AppSettings.CzkPerPoint / BasePointValue.
     /// </summary>
-    public decimal BasePointValue { get; set; } = 1649m;
+    public decimal BasePointValue { get; set; } = 150m;
 
     /// <summary>Monthly production points goal for gamification / dashboard KPIs.</summary>
     public decimal MonthlyGoalPoints { get; set; }

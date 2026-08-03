@@ -15,7 +15,6 @@ namespace RentUP.Cloud.Api.Controllers;
 public class AumController : ControllerBase
 {
     private readonly IAumSnapshotRepository _aum;
-    private readonly IProductSnapshotRepository _productSnapshots;
     private readonly IProductRepository _products;
     private readonly IUserSettingsRepository _settings;
     private readonly CsvImportService _csv;
@@ -25,7 +24,6 @@ public class AumController : ControllerBase
 
     public AumController(
         IAumSnapshotRepository aum,
-        IProductSnapshotRepository productSnapshots,
         IProductRepository products,
         IUserSettingsRepository settings,
         CsvImportService csv,
@@ -34,7 +32,6 @@ public class AumController : ControllerBase
         ICurrentUserService user)
     {
         _aum = aum;
-        _productSnapshots = productSnapshots;
         _products = products;
         _settings = settings;
         _csv = csv;
@@ -79,6 +76,47 @@ public class AumController : ControllerBase
         return Ok(new { committed = commitRows.Count });
     }
 
+    // ── Historical AUM Import & Management ───────────────────────────────────
+
+    [HttpPost("import-history/preview")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<ActionResult<HistoryCsvPreviewResult>> PreviewHistory(IFormFile file)
+    {
+        if (file is null || file.Length == 0)
+            return BadRequest(new { error = "No file uploaded." });
+
+        var result = await _csv.PreviewHistoryAsync(file);
+        return Ok(result);
+    }
+
+    [HttpPost("import-history/commit")]
+    public async Task<IActionResult> CommitHistory([FromBody] List<HistoryCsvCommitRow> confirmedRows)
+    {
+        if (confirmedRows is null || confirmedRows.Count == 0)
+            return BadRequest(new { error = "No rows to commit." });
+
+        var userId = _user.UserId!;
+        await _csv.CommitHistoryAsync(new HistoryCsvCommitRequest(confirmedRows), userId);
+
+        return Ok(new { committed = confirmedRows.Count });
+    }
+
+    [HttpDelete("snapshots/{id}")]
+    public async Task<IActionResult> DeleteSnapshot(Guid id)
+    {
+        await _aum.DeleteAsync(id);
+        await _aum.SaveChangesAsync();
+        return Ok(new { success = true });
+    }
+
+    [HttpDelete("snapshots/clear")]
+    public async Task<IActionResult> ClearSnapshots()
+    {
+        await _aum.DeleteAllAsync();
+        await _aum.SaveChangesAsync();
+        return Ok(new { success = true });
+    }
+
     // ── Future Projections ──────────────────────────────────────────────────
 
     [HttpGet("projections")]
@@ -96,7 +134,7 @@ public class AumController : ControllerBase
         }
 
         var userSettings = await _settings.GetAsync();
-        var basePointValue = userSettings?.BasePointValue ?? 1649m;
+        var basePointValue = userSettings?.BasePointValue ?? 150m;
 
         var projections = _calculator.CalculateFutureProjections(products, currentAums, basePointValue, years);
         return Ok(projections);
@@ -112,7 +150,7 @@ public class AumController : ControllerBase
         var prev = snapshots.OrderByDescending(s => s.Date).Skip(1).FirstOrDefault();
 
         var settings = await _settings.GetAsync();
-        var basePointValue = settings?.BasePointValue ?? 1649m;
+        var basePointValue = settings?.BasePointValue ?? 150m;
 
         var allProducts = await _products.GetAllAsync(includeInactive: false);
         var activeProducts = allProducts.OrderBy(p => p.Order).ToList();
@@ -206,7 +244,7 @@ public class AumController : ControllerBase
                 CurrentAum = 18500000m,
                 MonthlyDeposit = 320000m,
                 AverageYield = 6.5m,
-                CommissionFormula = "AUM/100*1.5/1649",
+                CommissionFormula = "AUM/100*1.5/150",
                 IncludeInAum = true,
                 Order = 1,
                 IsActive = true
@@ -251,7 +289,7 @@ public class AumController : ControllerBase
                 CurrentAum = 6384000m,
                 MonthlyDeposit = 140000m,
                 AverageYield = 5.0m,
-                CommissionFormula = "AUM/100*1.0/1649",
+                CommissionFormula = "AUM/100*1.0/150",
                 IncludeInAum = true,
                 Order = 4,
                 IsActive = true

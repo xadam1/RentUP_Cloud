@@ -28,7 +28,6 @@ public class AppDbContext : DbContext
     // ── DbSets ──────────────────────────────────────────────────────────────
 
     public DbSet<Product> Products => Set<Product>();
-    public DbSet<ProductSnapshot> ProductSnapshots => Set<ProductSnapshot>();
     public DbSet<AumSnapshot> AumSnapshots => Set<AumSnapshot>();
     public DbSet<UserSettings> UserSettings => Set<UserSettings>();
     public DbSet<Deal> Deals => Set<Deal>();
@@ -55,26 +54,7 @@ public class AppDbContext : DbContext
             // Global Query Filter — all queries auto-scoped to current user
             e.HasQueryFilter(p => p.UserId == _currentUser.UserId);
 
-            e.HasMany(p => p.Snapshots)
-             .WithOne(s => s.Product)
-             .HasForeignKey(s => s.ProductId)
-             .OnDelete(DeleteBehavior.Cascade);
-
             e.HasIndex(p => new { p.UserId, p.Name });
-        });
-
-        // ── ProductSnapshot ─────────────────────────────────────────────────
-        builder.Entity<ProductSnapshot>(e =>
-        {
-            e.HasKey(s => s.Id);
-            e.Property(s => s.Aum).HasPrecision(18, 2);
-            e.Property(s => s.MonthlyDeposit).HasPrecision(18, 2);
-
-            // Global Query Filter
-            e.HasQueryFilter(s => s.UserId == _currentUser.UserId);
-
-            // Unique constraint: one snapshot per product per date
-            e.HasIndex(s => new { s.ProductId, s.Date }).IsUnique();
         });
 
         // ── AumSnapshot ─────────────────────────────────────────────────────

@@ -55,7 +55,7 @@ public class DealsController : ControllerBase
     {
         var deals = await _repo.GetAllAsync(from, to);
         var settings = await _settings.GetAsync();
-        var basePointValue = settings?.BasePointValue ?? 1649m;
+        var basePointValue = settings?.BasePointValue ?? 150m;
 
         return Ok(new DealsStatsDto(
             TotalCount: deals.Count,
@@ -72,7 +72,7 @@ public class DealsController : ControllerBase
     {
         var points = _math.Evaluate(req.CommissionFormula, req.DepositAmount);
         var settings = await _settings.GetAsync();
-        var basePointValue = settings?.BasePointValue ?? 1649m;
+        var basePointValue = settings?.BasePointValue ?? 150m;
 
         var deal = new Deal
         {
@@ -102,7 +102,7 @@ public class DealsController : ControllerBase
 
         var points = _math.Evaluate(req.CommissionFormula, req.DepositAmount);
         var settings = await _settings.GetAsync();
-        var basePointValue = settings?.BasePointValue ?? 1649m;
+        var basePointValue = settings?.BasePointValue ?? 150m;
 
         deal.ClientName = req.ClientName;
         deal.Date = req.Date.ToUniversalTime();

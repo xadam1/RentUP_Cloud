@@ -14,19 +14,13 @@ public interface IProductRepository
     Task SaveChangesAsync();
 }
 
-public interface IProductSnapshotRepository
-{
-    Task<List<ProductSnapshot>> GetByProductIdAsync(Guid productId);
-    Task<List<ProductSnapshot>> GetByDateRangeAsync(DateTime from, DateTime to);
-    Task UpsertBatchAsync(IEnumerable<ProductSnapshot> snapshots);
-    Task SaveChangesAsync();
-}
-
 public interface IAumSnapshotRepository
 {
     Task<List<AumSnapshot>> GetAllAsync();
     Task<AumSnapshot?> GetByDateAsync(DateTime date);
     Task UpsertBatchAsync(IEnumerable<AumSnapshot> snapshots);
+    Task DeleteAsync(Guid id);
+    Task DeleteAllAsync();
     Task SaveChangesAsync();
 }
 

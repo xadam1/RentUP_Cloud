@@ -41,39 +41,6 @@ public class ProductRepository : IProductRepository
     public Task SaveChangesAsync() => _db.SaveChangesAsync();
 }
 
-public class ProductSnapshotRepository : IProductSnapshotRepository
-{
-    private readonly AppDbContext _db;
-    public ProductSnapshotRepository(AppDbContext db) => _db = db;
-
-    public Task<List<ProductSnapshot>> GetByProductIdAsync(Guid productId) =>
-        _db.ProductSnapshots.Where(s => s.ProductId == productId)
-            .OrderBy(s => s.Date).ToListAsync();
-
-    public Task<List<ProductSnapshot>> GetByDateRangeAsync(DateTime from, DateTime to) =>
-        _db.ProductSnapshots.Where(s => s.Date >= from && s.Date <= to)
-            .OrderBy(s => s.Date).ToListAsync();
-
-    public async Task UpsertBatchAsync(IEnumerable<ProductSnapshot> snapshots)
-    {
-        foreach (var snap in snapshots)
-        {
-            var existing = await _db.ProductSnapshots
-                .FirstOrDefaultAsync(s => s.ProductId == snap.ProductId && s.Date == snap.Date);
-
-            if (existing is null)
-                await _db.ProductSnapshots.AddAsync(snap);
-            else
-            {
-                existing.Aum = snap.Aum;
-                existing.MonthlyDeposit = snap.MonthlyDeposit;
-            }
-        }
-    }
-
-    public Task SaveChangesAsync() => _db.SaveChangesAsync();
-}
-
 public class AumSnapshotRepository : IAumSnapshotRepository
 {
     private readonly AppDbContext _db;
@@ -87,20 +54,40 @@ public class AumSnapshotRepository : IAumSnapshotRepository
 
     public async Task UpsertBatchAsync(IEnumerable<AumSnapshot> snapshots)
     {
+        var existingList = await _db.AumSnapshots.ToListAsync();
+        var existingMap = existingList.ToDictionary(s => s.Date.Date);
+
         foreach (var snap in snapshots)
         {
-            var existing = await _db.AumSnapshots
-                .FirstOrDefaultAsync(s => s.Date == snap.Date);
+            snap.Date = DateTime.SpecifyKind(snap.Date.Date, DateTimeKind.Utc);
 
-            if (existing is null)
-                await _db.AumSnapshots.AddAsync(snap);
+            if (existingMap.TryGetValue(snap.Date.Date, out var target))
+            {
+                target.TotalAum = snap.TotalAum;
+                target.TotalMonthlyDeposit = snap.TotalMonthlyDeposit;
+                if (snap.PointsPerYear > 0) target.PointsPerYear = snap.PointsPerYear;
+            }
             else
             {
-                existing.TotalAum = snap.TotalAum;
-                existing.TotalMonthlyDeposit = snap.TotalMonthlyDeposit;
-                existing.PointsPerYear = snap.PointsPerYear;
+                await _db.AumSnapshots.AddAsync(snap);
+                existingMap[snap.Date.Date] = snap;
             }
         }
+    }
+
+    public async Task DeleteAsync(Guid id)
+    {
+        var snapshot = await _db.AumSnapshots.FindAsync(id);
+        if (snapshot is not null)
+        {
+            _db.AumSnapshots.Remove(snapshot);
+        }
+    }
+
+    public async Task DeleteAllAsync()
+    {
+        var all = await _db.AumSnapshots.ToListAsync();
+        _db.AumSnapshots.RemoveRange(all);
     }
 
     public Task SaveChangesAsync() => _db.SaveChangesAsync();

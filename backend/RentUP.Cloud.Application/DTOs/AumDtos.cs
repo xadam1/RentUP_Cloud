@@ -11,16 +11,6 @@ public record AumSnapshotDto(
     decimal TotalMonthlyDeposit,
     decimal PointsPerYear
 );
-
-public record ProductSnapshotDto(
-    Guid Id,
-    Guid ProductId,
-    string ProductName,
-    DateTime Date,
-    decimal Aum,
-    decimal MonthlyDeposit
-);
-
 public record ProductDashboardItemDto(
     Guid Id,
     string Name,
@@ -81,6 +71,29 @@ public record CsvCommitRow(
     Guid ProductId,
     decimal Aum,
     decimal MonthlyDeposit
+);
+
+// ── Historical AUM CSV Import ────────────────────────────────────────────────
+
+public record HistoryCsvPreviewResult(
+    List<HistoryCsvPreviewRow> Rows,
+    List<string> Warnings,
+    int ValidCount,
+    int OverwriteCount
+);
+
+public record HistoryCsvPreviewRow(
+    DateTime Date,
+    decimal Aum,
+    bool OverwritesExisting,
+    string? Warning
+);
+
+public record HistoryCsvCommitRequest(List<HistoryCsvCommitRow> Rows);
+
+public record HistoryCsvCommitRow(
+    DateTime Date,
+    decimal Aum
 );
 
 // ── Projections ───────────────────────────────────────────────────────────────

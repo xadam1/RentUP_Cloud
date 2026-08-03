@@ -28,7 +28,7 @@ public class UserSettingsController : ControllerBase
         if (settings is null)
         {
             // Return defaults — settings row is created on first PUT
-            return Ok(new UserSettingsDto(_user.UserId!, 1649m, 0m, "dark"));
+            return Ok(new UserSettingsDto(_user.UserId!, 150m, 0m, "dark"));
         }
         return Ok(new UserSettingsDto(
             settings.UserId, settings.BasePointValue, settings.MonthlyGoalPoints, settings.Theme));

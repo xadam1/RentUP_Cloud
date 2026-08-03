@@ -48,7 +48,5 @@ public class Product
 
     /// <summary>Soft-delete flag. Inactive products are hidden from UI but kept for history.</summary>
     public bool IsActive { get; set; } = true;
-
-    // Navigation
-    public ICollection<ProductSnapshot> Snapshots { get; set; } = new List<ProductSnapshot>();
 }
+

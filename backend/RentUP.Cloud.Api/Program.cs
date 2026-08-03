@@ -98,10 +98,11 @@ using (var scope = app.Services.CreateScope())
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Database.EnsureCreated();
         
-        // Auto-heal database schema with new columns if they don't exist yet
+        // Auto-heal database schema and remove legacy tables
         db.Database.ExecuteSqlRaw(@"
             ALTER TABLE ""Products"" ADD COLUMN IF NOT EXISTS ""IncludeInAum"" boolean NOT NULL DEFAULT TRUE;
             ALTER TABLE ""Products"" ADD COLUMN IF NOT EXISTS ""CurrentAum"" numeric(18,2) NOT NULL DEFAULT 0.0;
+            DROP TABLE IF EXISTS ""ProductSnapshots"" CASCADE;
         ");
         Console.WriteLine("[Database] Schema verification and initialization successful.");
     }
