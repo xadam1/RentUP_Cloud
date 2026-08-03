@@ -298,25 +298,11 @@ export default function DealsPage() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-16 animate-in fade-in duration-300">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 flex-shrink-0">
-            <Briefcase className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-              Obchody & Produkční evidence
-            </h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Přehled sjednaných smluv s automatickou kalkulací provizních bodů z objemu vkladů do produktů.
-            </p>
-          </div>
-        </div>
-        
+      {/* Action button */}
+      <div className="flex justify-end border-b border-zinc-200 dark:border-zinc-800 pb-4">
         <button 
           onClick={() => setDialog('new')}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/25 self-start md:self-auto"
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/25 cursor-pointer"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>Přidat nový obchod</span>

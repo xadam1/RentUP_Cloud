@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { 
   LayoutDashboard, 
   TrendingUp, 
@@ -29,6 +29,28 @@ const dealsNavItems = [
 export default function AppLayout() {
   const { user, signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  const location = useLocation()
+
+  const getHeaderInfo = () => {
+    const path = location.pathname
+    if (path.includes('/dashboard')) {
+      return { title: 'AUM Dashboard', subtitle: 'Přehled spravovaného majetku a pasivního příjmu' }
+    } else if (path.includes('/projections')) {
+      return { title: 'Vize a projekce', subtitle: 'Budoucí vývoj a predikce růstu Vašeho portfolia' }
+    } else if (path.includes('/deals')) {
+      return { title: 'Obchody & Produkce', subtitle: 'Evidence uzavřených smluv a provizní statistiky' }
+    } else if (path.includes('/clients')) {
+      return { title: 'Klienti', subtitle: 'Správa klientského kmene a detailní karty' }
+    } else if (path.includes('/recommendations')) {
+      return { title: 'Doporučení', subtitle: 'Přehled doporučitelů a síť neomezeného růstu' }
+    } else if (path.includes('/statistics')) {
+      return { title: 'Statistická analýza', subtitle: 'Pokročilá analytická vizualizace produkce' }
+    } else if (path.includes('/settings')) {
+      return { title: 'Nastavení & Systém', subtitle: 'Konfigurace parametrů a správa testovacích dat' }
+    }
+    return { title: 'RentUP Cloud', subtitle: 'Správa investičního a obchodního portfolia' }
+  }
+  const { title, subtitle } = getHeaderInfo()
 
   return (
     <div className="flex h-screen bg-transparent text-zinc-800 dark:text-zinc-100 overflow-hidden relative font-sans">
@@ -143,22 +165,28 @@ export default function AppLayout() {
       {/* Main Content & Top Header */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
         {/* Header with Dark/Light Toggle */}
-        <header className="h-16 glass-nav px-6 lg:px-8 flex items-center justify-between flex-shrink-0 z-20">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-zinc-500 dark:text-zinc-400 font-semibold">Správa investičního a obchodního portfolia</span>
+        <header className="h-20 glass-nav px-6 lg:px-8 flex items-center justify-between flex-shrink-0 z-20 sticky top-0 transition-colors duration-200">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">{title}</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">{subtitle}</p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <button
               onClick={toggleTheme}
-              className="flex items-center justify-center w-10 h-10 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 text-zinc-600 dark:text-zinc-300 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105 transition-all shadow-sm"
+              className="relative inline-flex h-8 w-16 items-center rounded-full bg-zinc-200 dark:bg-zinc-800 transition-colors border border-zinc-300 dark:border-zinc-700 shadow-inner focus:outline-none cursor-pointer"
               title={theme === 'dark' ? 'Přepnout na světlý motiv' : 'Přepnout na tmavý motiv'}
             >
-              {theme === 'dark' ? (
-                <Sun className="w-5 h-5 text-amber-400 animate-in fade-in duration-200" />
-              ) : (
-                <Moon className="w-5 h-5 text-indigo-600 animate-in fade-in duration-200" />
-              )}
+              <span className="sr-only">Přepnout téma</span>
+              <span className={`inline-flex h-6 w-6 transform rounded-full bg-white dark:bg-zinc-900 shadow-sm transition-transform duration-300 ease-in-out items-center justify-center border border-zinc-200 dark:border-zinc-700 ${
+                theme === 'dark' ? 'translate-x-9' : 'translate-x-1'
+              }`}>
+                {theme === 'dark' ? (
+                  <Moon className="w-3.5 h-3.5 text-blue-400" />
+                ) : (
+                  <Sun className="w-3.5 h-3.5 text-amber-500" />
+                )}
+              </span>
             </button>
           </div>
         </header>

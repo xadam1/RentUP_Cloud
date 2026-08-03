@@ -152,41 +152,54 @@
   border-color: #3f3f46;
 }
 
-/* Special Premium Card for Passive Income */
+/* Special Premium Card for Passive Income (Upravený gradient pro lepší čitelnost) */
 .premium-card {
-  background: linear-gradient(135deg, #10b981 0%, #047857 100%);
+  background: linear-gradient(135deg, #064e3b 0%, #10b981 100%);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: white;
   border-radius: 1.25rem;
-  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }
 .premium-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 20px 35px -5px rgba(16, 185, 129, 0.45);
+  box-shadow: 0 20px 35px -5px rgba(16, 185, 129, 0.4);
 }
 .premium-card::after {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.1) 100%);
   pointer-events: none;
 }
 .premium-orb {
   position: absolute;
   top: -20px; right: -20px;
   width: 100px; height: 100px;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 50%;
-  filter: blur(20px);
+  filter: blur(25px);
+}
+.dark .premium-card {
+  background: linear-gradient(135deg, #022c22 0%, #059669 100%);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  color: #f8fafc;
+}
+.dark .premium-card:hover {
+  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.25);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+.dark .premium-card .premium-orb {
+  background: rgba(16, 185, 129, 0.15);
 }
 
 /* Sidebar Navigation */
 .sidebar-item {
   transition: all 0.2s ease;
-  border-radius: 0.625rem;
+  border-radius: 0.5rem;
   color: #52525b;
 }
 .dark .sidebar-item { color: #a1a1aa; }
@@ -210,8 +223,25 @@
   color: #60a5fa;
 }
 
-/* Modal backdrop */
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 3px; }
+.dark ::-webkit-scrollbar-thumb { background: #3f3f46; }
+
+/* Modal backdrop & transitions */
 .modal-backdrop {
   backdrop-filter: blur(8px);
   background: rgba(9, 9, 11, 0.6);
+  transition: opacity 0.2s ease;
+}
+
+.table-row-hover {
+  transition: background-color 0.2s;
+}
+.table-row-hover:hover {
+  background-color: #f4f4f5;
+}
+.dark .table-row-hover:hover {
+  background-color: #27272a;
 }

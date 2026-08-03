@@ -3,7 +3,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend
 } from 'recharts'
-import { TrendingUp, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import { aumApi, type ProjectionPoint } from '@/lib/api'
 
 const czk = new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK', maximumFractionDigits: 0 })
@@ -49,23 +49,8 @@ export default function ProjectionsPage() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-16 animate-in fade-in duration-300">
-      {/* Header & Horzion selector */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400 flex-shrink-0">
-            <TrendingUp className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white">
-              Vize a budoucí projekce AUM
-            </h1>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-              Odhadovaný složený úrok a růst portfolia s ohledem na pravidelné měsíční vklady a výnosnosti produktů.
-            </p>
-          </div>
-        </div>
-
-        {/* Year selector */}
+      {/* Horizon selector */}
+      <div className="flex justify-end border-b border-zinc-200 dark:border-zinc-800 pb-4">
         <div className="inline-flex rounded-xl p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-bold shadow-xs">
           {[5, 10, 15, 20].map(y => (
             <button
