@@ -47,6 +47,17 @@ export const aumApi = {
   },
   commitImport: (rows: CsvPreviewRow[]) =>
     api.post<{ committed: number }>('/api/aum/import/commit', rows),
+  previewHistoryCsv: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post<HistoryCsvPreviewResult>('/api/aum/import-history/preview', form)
+  },
+  commitHistoryImport: (rows: HistoryCsvCommitRow[]) =>
+    api.post<{ committed: number }>('/api/aum/import-history/commit', rows),
+  deleteSnapshot: (id: string) =>
+    api.delete(`/api/aum/snapshots/${id}`),
+  clearSnapshots: () =>
+    api.delete('/api/aum/snapshots/clear'),
   seedTestData: () =>
     api.post<{ success: boolean; message: string }>('/api/aum/seed-test-data'),
 }
@@ -151,6 +162,25 @@ export interface CsvPreviewResult {
   warnings: string[]
   validCount: number
   skippedCount: number
+}
+
+export interface HistoryCsvPreviewRow {
+  date: string
+  aum: number
+  overwritesExisting: boolean
+  warning?: string | null
+}
+
+export interface HistoryCsvPreviewResult {
+  rows: HistoryCsvPreviewRow[]
+  warnings: string[]
+  validCount: number
+  overwriteCount: number
+}
+
+export interface HistoryCsvCommitRow {
+  date: string
+  aum: number
 }
 
 export interface UserSettings {

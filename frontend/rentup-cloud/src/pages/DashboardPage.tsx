@@ -7,15 +7,17 @@ import {
   Sparkles, 
   BarChart3, 
   Layers, 
-  Activity, 
   PiggyBank,
   Check,
-  X
+  X,
+  History
 } from 'lucide-react';
 import { aumApi, type DashboardSummary, type AumSnapshot, type ProductDashboardItem } from '@/lib/api';
 import { useTheme } from '@/contexts/ThemeContext';
 import ProductEditModal from '@/components/dashboard/ProductEditModal';
 import CsvImportButton from '@/components/dashboard/CsvImportButton';
+import HistoryImportButton from '@/components/dashboard/HistoryImportButton';
+import HistoryManageModal from '@/components/dashboard/HistoryManageModal';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
@@ -98,6 +100,7 @@ export default function DashboardPage() {
   // Modal controls
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductDashboardItem | null>(null);
+  const [isHistoryManagerOpen, setIsHistoryManagerOpen] = useState(false);
 
   // UI state for charts & period comparison
   const [distributionView, setDistributionView] = useState<'categories' | 'products'>('products');
@@ -459,7 +462,7 @@ export default function DashboardPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 font-bold text-emerald-600 dark:text-emerald-400 text-right tabular-nums">
-                        ~ {formatCurrencyFull(item.monthlyIncomeCzk || (item.yearlyPoints * (summary?.basePointValue || 1649)) / 12 || 0)}
+                        ~ {formatCurrencyFull(item.monthlyIncomeCzk || (item.yearlyPoints * (summary?.basePointValue || 150)) / 12 || 0)}
                       </td>
                     </tr>
                   );
@@ -618,13 +621,25 @@ export default function DashboardPage() {
 
         {/* Area Chart: Vývoj AUM (2 cols) */}
         <div className="lg:col-span-2 modern-card p-6 border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between">
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Vývoj AUM</h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Historie spravovaného majetku</p>
             </div>
-            {/* Interactive Period Selector */}
-            <div className="bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-lg flex text-xs font-semibold border border-zinc-200 dark:border-zinc-700/50 self-start sm:self-auto flex-wrap">
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+              <HistoryImportButton onImported={loadData} />
+              <button
+                type="button"
+                onClick={() => setIsHistoryManagerOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 transition-all shadow-sm cursor-pointer"
+                title="Správa a mazání historických záznamů AUM"
+              >
+                <History className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Správa historie</span>
+              </button>
+              
+              {/* Interactive Period Selector */}
+              <div className="bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-lg flex text-xs font-semibold border border-zinc-200 dark:border-zinc-700/50 flex-wrap">
               {(['1M', '3M', '6M', 'YTD', '1R', 'MAX'] as const).map((p: '1M' | '3M' | '6M' | 'YTD' | '1R' | 'MAX') => (
                 <button
                   key={p}
@@ -641,6 +656,7 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+        </div>
 
           <div className="w-full min-h-[220px] flex-1">
             {filteredTrendData.length > 0 ? (
@@ -713,6 +729,13 @@ export default function DashboardPage() {
         onClose={() => setIsModalOpen(false)}
         onSaved={loadData}
         productToEdit={editingProduct}
+      />
+
+      {/* History Management Modal */}
+      <HistoryManageModal
+        open={isHistoryManagerOpen}
+        onClose={() => setIsHistoryManagerOpen(false)}
+        onUpdated={loadData}
       />
     </div>
   );

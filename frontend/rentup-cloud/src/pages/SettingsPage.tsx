@@ -4,7 +4,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 import { Database, Sparkles, CheckCircle2, AlertCircle, RefreshCw, TrendingUp } from 'lucide-react'
 
 export default function SettingsPage() {
-  const [form, setForm] = useState<UpdateSettingsRequest>({ basePointValue: 1649, monthlyGoalPoints: 0, theme: 'dark' })
+  const [form, setForm] = useState<UpdateSettingsRequest>({ basePointValue: 150, monthlyGoalPoints: 0, theme: 'dark' })
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
   const [seeding, setSeeding] = useState(false)
@@ -20,7 +20,7 @@ export default function SettingsPage() {
       monthlyGoalPoints: r.data.monthlyGoalPoints,
       theme: r.data.theme,
     })).catch(() => {
-      setForm({ basePointValue: 1649, monthlyGoalPoints: 100, theme: 'dark' })
+      setForm({ basePointValue: 150, monthlyGoalPoints: 100, theme: 'dark' })
     }).finally(() => setLoading(false))
   }, [])
 

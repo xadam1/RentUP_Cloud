@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Upload, X, AlertTriangle, CheckCircle2, FileText } from 'lucide-react'
+import { Download, X, AlertTriangle, CheckCircle2, FileText } from 'lucide-react'
 import { aumApi, type CsvPreviewRow } from '@/lib/api'
 
 interface Props {
@@ -38,7 +38,7 @@ export default function CsvImportButton({ onImported }: Props) {
       onImported()
     } catch {
       setPhase('error')
-      setErrorMsg('Chyba při ukládání dat a produktových snapshotů do databáze.')
+      setErrorMsg('Chyba při ukládání dat do databáze.')
     }
   }
 
@@ -50,8 +50,8 @@ export default function CsvImportButton({ onImported }: Props) {
         onClick={() => fileRef.current?.click()}
         className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-all shadow-sm border border-zinc-200 dark:border-zinc-700 cursor-pointer"
       >
-        <Upload className="w-3.5 h-3.5" />
-        <span>Importovat</span>
+        <Download className="w-3.5 h-3.5 text-emerald-500" />
+        <span>Importovat partnery z CSV</span>
       </button>
       <input
         ref={fileRef}
@@ -70,12 +70,12 @@ export default function CsvImportButton({ onImported }: Props) {
             {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-500">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-500">
                   <FileText className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-zinc-800 dark:text-zinc-100">Import ze souboru CSV</h3>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Podpora pro maticový formát s historií stavů dle spravovaných aktiv.</p>
+                  <h3 className="text-base font-bold text-zinc-800 dark:text-zinc-100">Import AUM dle partnera z CSV</h3>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Podpora pro soubory „AUM dle partnera“ a maticový formát s historií stavů.</p>
                 </div>
               </div>
               <button onClick={reset} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors p-1 rounded-lg">
