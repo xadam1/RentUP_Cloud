@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { settingsApi, aumApi, type UpdateSettingsRequest } from '@/lib/api'
 import { useTheme } from '@/contexts/ThemeContext'
-import { Settings, Database, Sparkles, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react'
+import { Database, Sparkles, CheckCircle2, AlertCircle, RefreshCw, TrendingUp } from 'lucide-react'
 
 export default function SettingsPage() {
   const [form, setForm] = useState<UpdateSettingsRequest>({ basePointValue: 1649, monthlyGoalPoints: 0, theme: 'dark' })
@@ -9,6 +9,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [seeding, setSeeding] = useState(false)
   const [seedResult, setSeedResult] = useState<{ success?: string; error?: string } | null>(null)
+  const [comparisonPeriod, setComparisonPeriod] = useState<string>(() => {
+    return localStorage.getItem('rentup_dashboard_comparison_period') || 'YTD'
+  })
   const { theme } = useTheme()
 
   useEffect(() => {
@@ -17,7 +20,6 @@ export default function SettingsPage() {
       monthlyGoalPoints: r.data.monthlyGoalPoints,
       theme: r.data.theme,
     })).catch(() => {
-      // In case user settings are not initialized in db yet
       setForm({ basePointValue: 1649, monthlyGoalPoints: 100, theme: 'dark' })
     }).finally(() => setLoading(false))
   }, [])
@@ -61,14 +63,45 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 pb-16 animate-in fade-in duration-300">
-      <div>
-        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white flex items-center gap-3">
-          <Settings className="w-7 h-7 text-blue-500 stroke-[2.5]" />
-          <span>Nastavení & Systém</span>
-        </h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-          Konfigurace kalkulačních koeficientů bodové produkce a správa databázových dat portfolia.
-        </p>
+      {/* Období srovnání na Dashboardu */}
+      <div className="modern-card p-6 lg:p-8 space-y-5 border-l-4 border-emerald-500">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h2 className="text-base font-bold text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-emerald-500" />
+              <span>Srovnávací období pro KPI karty (AUM & vklady)</span>
+            </h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xl leading-relaxed">
+              Zvolte, za jaké historické období se má na hlavní stránce AUM Dashboard vypočítávat a zobrazovat porovnání růstu u karet Celkové AUM a Pravidelné vklady / měs. Tímto ovlivníte zobrazení procentuální změny (v plusu vykresleno zeleně s šipkou vzhůru, při poklesu červeně s šipkou dolů).
+            </p>
+          </div>
+        </div>
+
+        <div className="pt-2">
+          <div className="inline-flex rounded-xl p-1.5 bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700/60 text-sm font-semibold gap-1 flex-wrap">
+            {(['1M', '3M', '6M', '1R', 'YTD'] as const).map(p => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => {
+                  setComparisonPeriod(p)
+                  localStorage.setItem('rentup_dashboard_comparison_period', p)
+                }}
+                className={`px-4 py-2 rounded-lg transition-all cursor-pointer ${
+                  comparisonPeriod === p
+                    ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm font-bold border border-zinc-200/60 dark:border-zinc-600'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                }`}
+              >
+                {p === '1M' && '1 měsíc (1M)'}
+                {p === '3M' && '3 měsíce (3M)'}
+                {p === '6M' && '6 měsíců (6M)'}
+                {p === '1R' && '1 rok (1R)'}
+                {p === 'YTD' && 'Od začátku roku (YTD)'}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Kalkulační parametry Form */}
@@ -118,7 +151,7 @@ export default function SettingsPage() {
         <div className="pt-2">
           <button
             type="submit"
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl text-sm transition-all duration-200 shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 max-w-xs"
+            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl text-sm transition-all duration-200 shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 max-w-xs cursor-pointer"
           >
             {saved ? (
               <>
@@ -165,7 +198,7 @@ export default function SettingsPage() {
             type="button"
             onClick={handleSeedTestData}
             disabled={seeding}
-            className="px-5 py-3 bg-zinc-900 dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-100 text-white dark:text-zinc-900 font-semibold rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2.5 disabled:opacity-50"
+            className="px-5 py-3 bg-zinc-900 dark:bg-white hover:bg-zinc-800 dark:hover:bg-zinc-100 text-white dark:text-zinc-900 font-semibold rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2.5 disabled:opacity-50 cursor-pointer"
           >
             {seeding ? (
               <>
