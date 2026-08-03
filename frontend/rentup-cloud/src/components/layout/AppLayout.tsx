@@ -19,7 +19,7 @@ import { useTheme } from '@/contexts/ThemeContext'
 
 const aumNavItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/projections', icon: TrendingUp, label: 'Vize a projekce' },
+  { to: '/projections', icon: TrendingUp, label: 'Budoucí příjmy' },
 ]
 
 const dealsNavItems = [
@@ -48,7 +48,7 @@ export default function AppLayout() {
     if (path.includes('/dashboard')) {
       return { title: 'AUM Dashboard', subtitle: 'Přehled spravovaného majetku a pasivního příjmu' }
     } else if (path.includes('/projections')) {
-      return { title: 'Vize a projekce', subtitle: 'Budoucí vývoj a predikce růstu Vašeho portfolia' }
+      return { title: 'Budoucí příjmy', subtitle: 'Modelování a projekce budoucího vývoje portfolia a provizí' }
     } else if (path.includes('/deals')) {
       return { title: 'Obchody & Produkce', subtitle: 'Evidence uzavřených smluv a provizní statistiky' }
     } else if (path.includes('/clients')) {

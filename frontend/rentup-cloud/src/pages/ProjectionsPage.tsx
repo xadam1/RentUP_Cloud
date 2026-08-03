@@ -1,162 +1,508 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Legend
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
+  ResponsiveContainer
 } from 'recharts'
-import { Sparkles } from 'lucide-react'
-import { aumApi, type ProjectionPoint } from '@/lib/api'
+import { 
+  Layers, Wallet, Sparkles, Calendar, TrendingUp, CheckSquare, 
+  Square
+} from 'lucide-react'
+import { aumApi, type ProjectionPoint, type DashboardSummary } from '@/lib/api'
 
-const czk = new Intl.NumberFormat('cs-CZ', { style: 'currency', currency: 'CZK', maximumFractionDigits: 0 })
+const formatCurrencyFull = (value: number) => {
+  return `${Math.round(value).toLocaleString('cs-CZ')} Kč`
+}
 
-function ChartTooltip({ active, payload, label }: any) {
+const formatPoints = (value: number) => {
+  return `${Math.round(value).toLocaleString('cs-CZ')} b.`
+}
+
+function CustomChartTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
+  const data = payload[0]?.payload
+  if (!data) return null
+
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 shadow-2xl text-sm space-y-1.5 text-white">
-      <p className="text-zinc-400 text-xs font-semibold mb-1 border-b border-zinc-800 pb-1">{label}</p>
-      {payload.map((p: any) => (
-        <p key={p.name} style={{ color: p.color }} className="font-medium text-xs flex justify-between gap-4">
-          <span>{p.name}:</span>
-          <strong className="font-mono">{p.name.includes('AUM') ? czk.format(p.value) : p.value.toLocaleString('cs-CZ')}</strong>
-        </p>
-      ))}
+    <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-3.5 shadow-xl text-xs space-y-2 z-50 pointer-events-none min-w-[220px]">
+      <p className="font-bold text-zinc-900 dark:text-white pb-1.5 border-b border-zinc-100 dark:border-zinc-800/80">
+        {label === '0. rok' ? '0. rok (Aktuální stav / start)' : label}
+      </p>
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+          Odhad AUM:
+        </span>
+        <strong className="font-mono text-zinc-900 dark:text-white text-[13px] tabular-nums">{formatCurrencyFull(data.AUM || 0)}</strong>
+      </div>
+      {data['Provize / měs.'] !== undefined && (
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            Provize / měsíc:
+          </span>
+          <strong className="font-mono text-emerald-600 dark:text-emerald-400 text-xs tabular-nums">{formatCurrencyFull(data['Provize / měs.'])}</strong>
+        </div>
+      )}
+      {data['Body / měs.'] !== undefined && (
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+            Body / měsíc:
+          </span>
+          <strong className="font-mono text-amber-600 dark:text-amber-400 text-xs tabular-nums">{formatPoints(data['Body / měs.'])}</strong>
+        </div>
+      )}
     </div>
   )
 }
 
 export default function ProjectionsPage() {
-  const [points, setPoints] = useState<ProjectionPoint[]>([])
-  const [years, setYears] = useState(10)
+  const [allPoints, setAllPoints] = useState<ProjectionPoint[]>([])
+  const [summary, setSummary] = useState<DashboardSummary | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Horizon & interactivity states
+  const [years, setYears] = useState<number>(15)
+  const [inputVal, setInputVal] = useState<string>("15")
+  const [selectedYears, setSelectedYears] = useState<Set<number>>(new Set())
 
   useEffect(() => {
     setLoading(true)
-    aumApi.getProjections(years)
-      .then(r => setPoints(r.data.points))
-      .catch(() => setPoints([]))
-      .finally(() => setLoading(false))
-  }, [years])
+    Promise.all([
+      aumApi.getProjections(30).catch(() => ({ data: { points: [] as ProjectionPoint[], basePointValue: 150, yearsProjected: 30 } })),
+      aumApi.getSummary().catch(() => ({ data: null }))
+    ]).then(([projRes, sumRes]) => {
+      setAllPoints(projRes.data.points || [])
+      setSummary(sumRes.data)
+    }).finally(() => setLoading(false))
+  }, [])
 
-  const chartData = points
-    .filter((_, i) => i % 3 === 0 || i === points.length - 1)
-    .map(p => ({
-      date: new Date(p.date).toLocaleDateString('cs-CZ', { month: 'short', year: '2-digit' }),
-      'AUM': Math.round(p.totalAum),
-      'Body/rok': Math.round(p.pointsPerYear),
-      'Provize': Math.round(p.estimatedCommissionCzk),
+  const handlePresetClick = (val: number) => {
+    setYears(val)
+    setInputVal(String(val))
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value
+    setInputVal(v)
+    const n = parseInt(v, 10)
+    if (!isNaN(n) && n >= 1 && n <= 30) {
+      setYears(n)
+    }
+  }
+
+  const handleInputBlur = () => {
+    let n = parseInt(inputVal, 10)
+    if (isNaN(n) || n < 1) n = 1
+    if (n > 30) n = 30
+    setYears(n)
+    setInputVal(String(n))
+  }
+
+  // Generate annual data rows from monthly simulation points
+  const annualData = useMemo(() => {
+    const rows = []
+    for (let y = 1; y <= years; y++) {
+      const pointIndex = y * 12 - 1
+      if (allPoints.length > pointIndex && allPoints[pointIndex]) {
+        const p = allPoints[pointIndex]
+        rows.push({
+          year: y,
+          aum: p.totalAum,
+          pointsMonth: p.pointsPerYear / 12,
+          payoutMonth: p.estimatedCommissionCzk / 12,
+          pointsYear: p.pointsPerYear,
+          payoutYear: p.estimatedCommissionCzk
+        })
+      }
+    }
+    return rows
+  }, [allPoints, years])
+
+  // Chart data including Year 0 start point
+  const chartData = useMemo(() => {
+    const startPoint = {
+      name: '0. rok',
+      AUM: Math.round(summary?.totalAum || (allPoints[0]?.totalAum || 0)),
+      'Provize / měs.': Math.round((summary?.estimatedCommissionMonthCzk || 0)),
+      'Body / měs.': Math.round((summary?.pointsPerMonth || 0))
+    }
+
+    const annualPoints = annualData.map(r => ({
+      name: `${r.year}. rok`,
+      AUM: Math.round(r.aum),
+      'Provize / měs.': Math.round(r.payoutMonth),
+      'Body / měs.': Math.round(r.pointsMonth)
     }))
 
-  const finalPoint = points[points.length - 1]
+    return [startPoint, ...annualPoints]
+  }, [summary, allPoints, annualData])
+
+  // Top metric cards totals
+  const targetAum = annualData.length > 0 ? annualData[annualData.length - 1].aum : (summary?.totalAum || 0)
+  const totalPayout = annualData.reduce((acc, r) => acc + r.payoutYear, 0)
+  const totalPoints = annualData.reduce((acc, r) => acc + r.pointsYear, 0)
+  const finalMonthPayout = annualData.length > 0 ? annualData[annualData.length - 1].payoutMonth : (summary?.estimatedCommissionMonthCzk || 0)
+
+  // Bottom table footer summary calculation based on selected rows
+  const { summaryPoints, summaryPayout, isSubsetSelected } = useMemo(() => {
+    const validSelected = new Set([...selectedYears].filter(y => y <= years))
+    const isSubset = validSelected.size > 0
+    let sumPoints = 0
+    let sumPayout = 0
+
+    annualData.forEach(row => {
+      if (!isSubset || validSelected.has(row.year)) {
+        sumPoints += row.pointsYear
+        sumPayout += row.payoutYear
+      }
+    })
+
+    return { summaryPoints: sumPoints, summaryPayout: sumPayout, isSubsetSelected: isSubset }
+  }, [annualData, selectedYears, years])
+
+  const toggleRowSelection = (year: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedYears(prev => {
+      const next = new Set(prev)
+      if (next.has(year)) next.delete(year)
+      else next.add(year)
+      return next
+    })
+  }
+
+  const toggleAllSelection = () => {
+    const validSelected = new Set([...selectedYears].filter(y => y <= years))
+    if (validSelected.size === annualData.length && annualData.length > 0) {
+      setSelectedYears(new Set())
+    } else {
+      setSelectedYears(new Set(annualData.map(d => d.year)))
+    }
+  }
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-16 animate-in fade-in duration-300">
-      {/* Horizon selector */}
-      <div className="flex justify-end border-b border-zinc-200 dark:border-zinc-800 pb-4">
-        <div className="inline-flex rounded-xl p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-bold shadow-xs">
-          {[5, 10, 15, 20].map(y => (
-            <button
-              key={y}
-              onClick={() => setYears(y)}
-              className={`px-4 py-2 rounded-lg transition-all ${
-                years === y 
-                  ? 'bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-700' 
-                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-              }`}
-            >
-              Horizont {y} let
-            </button>
-          ))}
+    <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-in fade-in duration-300">
+      {/* Explanation Banner */}
+      <div className="modern-card p-4 border border-zinc-200 dark:border-zinc-800 bg-blue-50/50 dark:bg-blue-950/20 flex items-start sm:items-center gap-3 text-sm text-zinc-600 dark:text-zinc-300 shadow-xs">
+        <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
+          <TrendingUp className="w-4 h-4 stroke-[2.5]" />
+        </div>
+        <div className="flex-1 text-xs sm:text-sm leading-relaxed">
+          <span className="font-semibold text-zinc-900 dark:text-white">Modelování budoucích příjmů a stavu portfolia: </span>
+          Kalkulace vyjadřuje budoucí hodnotu Vašeho spravovaného majetku při zachování současných parametrů (složené úročení stávajících zprostředkovaných drah a měsíčních vkladů), bez nutnosti získávání nových obchodů.
         </div>
       </div>
 
-      {/* Target summary cards */}
-      {finalPoint && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <div className="modern-card p-6 border border-zinc-200 dark:border-zinc-800 relative overflow-hidden group">
-            <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-1">
-              Odhadované AUM za {years} let
-            </span>
-            <p className="text-2xl lg:text-3xl font-bold font-mono text-blue-600 dark:text-blue-400">
-              {czk.format(finalPoint.totalAum)}
-            </p>
-            <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
-              <span>Složený úrok + vklady</span>
-              <span className="font-semibold text-emerald-600 dark:text-emerald-400">Dlouhodobý horizont</span>
+      {/* Top Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Card 1: Target AUM */}
+        <div className="modern-card p-6 relative group border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between">
+          <div className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <Layers className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Cílový stav AUM</p>
+            <div className="flex items-baseline gap-1.5">
+              <h3 className="text-2xl sm:text-3xl font-bold font-mono text-blue-600 dark:text-blue-400 tracking-tight tabular-nums">
+                {Math.round(targetAum).toLocaleString('cs-CZ')}
+              </h3>
+              <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">Kč</span>
             </div>
           </div>
-
-          <div className="modern-card p-6 border border-zinc-200 dark:border-zinc-800 relative overflow-hidden group">
-            <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 block mb-1">
-              Roční produkce bodů (za {years} let)
-            </span>
-            <p className="text-2xl lg:text-3xl font-bold font-mono text-amber-600 dark:text-amber-400">
-              {finalPoint.pointsPerYear.toLocaleString('cs-CZ', { maximumFractionDigits: 1 })} <span className="text-base font-semibold text-zinc-500">b. / rok</span>
-            </p>
-            <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
-              <span>Měsíční průměr:</span>
-              <span className="font-mono font-bold text-zinc-800 dark:text-zinc-200">~{(finalPoint.pointsPerYear / 12).toLocaleString('cs-CZ', { maximumFractionDigits: 1 })} b.</span>
-            </div>
-          </div>
-
-          <div className="premium-card p-6 rounded-2xl relative overflow-hidden flex flex-col justify-between group">
-            <div>
-              <div className="flex items-start justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-200 block mb-1">
-                  Odhad ročních provizí v Cíli
-                </span>
-                <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-              </div>
-              <p className="text-2xl lg:text-3xl font-bold font-mono text-white mt-1">
-                {czk.format(finalPoint.estimatedCommissionCzk)}
-              </p>
-            </div>
-            <div className="mt-4 pt-3 border-t border-white/10 text-xs text-amber-100/80 flex items-center justify-between">
-              <span>Měsíční pasivní odhad:</span>
-              <span className="font-mono font-bold bg-white/15 px-2 py-0.5 rounded-full">{czk.format(finalPoint.estimatedCommissionCzk / 12)} / měs.</span>
-            </div>
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
+            <span>Horizont predikce:</span>
+            <span className="font-semibold text-zinc-700 dark:text-zinc-300">za {years} {years === 1 ? 'rok' : years >= 2 && years <= 4 ? 'roky' : 'let'}</span>
           </div>
         </div>
-      )}
 
-      {/* Chart Card */}
+        {/* Card 2: Celková výplata */}
+        <div className="premium-card p-6 group relative overflow-hidden flex flex-col justify-between">
+          <div className="premium-orb"></div>
+          <div className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-white/20 text-white flex items-center justify-center backdrop-blur-sm shadow-sm group-hover:scale-110 transition-transform duration-300">
+            <Wallet className="w-5 h-5" />
+          </div>
+          <div className="relative z-10">
+            <p className="text-xs font-bold text-emerald-100 uppercase tracking-wider mb-2">Celková výplata (součet)</p>
+            <div className="flex items-baseline gap-1.5">
+              <h3 className="text-2xl sm:text-3xl font-bold font-mono text-white tracking-tight tabular-nums">
+                {Math.round(totalPayout).toLocaleString('cs-CZ')}
+              </h3>
+              <span className="text-sm font-medium text-emerald-100">Kč</span>
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-white/15 text-xs text-emerald-100 relative z-10 flex items-center justify-between">
+            <span>Měsíčně v Cíli:</span>
+            <span className="font-mono font-bold bg-white/15 px-2 py-0.5 rounded-full text-[11px]">{formatCurrencyFull(finalMonthPayout)}</span>
+          </div>
+        </div>
+
+        {/* Card 3: Celkové body */}
+        <div className="modern-card p-6 relative group border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between">
+          <div className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Celkové body (součet)</p>
+            <div className="flex items-baseline gap-1.5">
+              <h3 className="text-2xl sm:text-3xl font-bold font-mono text-zinc-900 dark:text-white tracking-tight tabular-nums">
+                {Math.round(totalPoints).toLocaleString('cs-CZ')}
+              </h3>
+              <span className="text-sm font-semibold text-zinc-500">b.</span>
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 text-xs text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
+            <span>Průměr pro daný horizont:</span>
+            <span className="font-mono font-bold text-zinc-700 dark:text-zinc-300">{formatPoints(years > 0 ? totalPoints / years : 0)} / rok</span>
+          </div>
+        </div>
+
+        {/* Card 4: Počet roků input & presets */}
+        <div className="modern-card p-6 relative border border-zinc-200 dark:border-zinc-800 flex flex-col justify-between">
+          <div className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+            <Calendar className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Počet roků (Max 30 let)</p>
+            <div className="flex items-center gap-2 mt-1">
+              <input 
+                type="number" 
+                min="1" 
+                max="30" 
+                value={inputVal}
+                onChange={handleInputChange}
+                onBlur={handleInputBlur}
+                className="w-24 bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white text-2xl font-bold font-mono rounded-xl px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-center tabular-nums"
+              />
+              <span className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">let</span>
+            </div>
+          </div>
+          <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-start gap-1 flex-wrap">
+            {[5, 10, 15, 20, 30].map(py => (
+              <button
+                key={py}
+                type="button"
+                onClick={() => handlePresetClick(py)}
+                className={`px-2 py-1 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                  years === py
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                }`}
+              >
+                {py}l
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Chart Section */}
       <div className="modern-card p-6 border border-zinc-200 dark:border-zinc-800">
-        <div className="mb-6">
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
-            Růst a exponenciála majetku v čase ({years} let)
-          </h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-            Porovnání růstu spravovaného AUM (potažená osa vlevo) a přelomu do pasivních bodů (osa vpravo).
-          </p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+          <div>
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight">Vývoj AUM v jednotlivých letech</h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              Kumulativní růst AUM se složenou roční úrokovou mírou v horizontu do {years} let
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/80 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
+            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
+            <span>Stav portfolia (AUM)</span>
+          </div>
         </div>
 
         {loading ? (
-          <div className="h-80 bg-zinc-100 dark:bg-zinc-800/50 rounded-2xl animate-pulse flex items-center justify-center">
-            <span className="text-xs text-zinc-500 font-semibold animate-bounce">Kalkuluji matematiku složeného úroku...</span>
+          <div className="h-[340px] bg-zinc-100 dark:bg-zinc-800/40 rounded-2xl animate-pulse flex items-center justify-center">
+            <span className="text-xs font-semibold text-zinc-500 animate-bounce">Kalkuluji matematiku složeného úročení...</span>
           </div>
-        ) : chartData.length === 0 ? (
-          <div className="h-80 flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 text-sm border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
-            <p className="font-semibold text-zinc-600 dark:text-zinc-300">Zatím nebyly zjištěny žádné produkty k predikci.</p>
-            <p className="text-xs mt-1 text-zinc-500">Přidejte prosím v Dashboardu do svého portfolia první investiční produkty s vkladem či úrodou.</p>
+        ) : chartData.length <= 1 ? (
+          <div className="h-[340px] flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 text-sm border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
+            <p className="font-semibold text-zinc-600 dark:text-zinc-300">Zatím nebyly nalezeny žádné produkty pro výpočet.</p>
+            <p className="text-xs mt-1 text-zinc-500">Zaregistrujte prosím v Dashboardu produkty se zaškrtnutím vkladů a úroku do AUM.</p>
           </div>
         ) : (
-          <div className="h-80 w-full pt-2">
+          <div className="h-[340px] w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData} margin={{ top: 10, right: 15, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#71717a" strokeOpacity={0.15} />
-                <XAxis dataKey="date" tick={{ fill: '#71717a', fontSize: 11, fontWeight: 600 }} axisLine={false} tickLine={false} dy={10} />
-                <YAxis yAxisId="aum" tickFormatter={v => `${(v / 1_000_000).toFixed(1)}M`} tick={{ fill: '#3b82f6', fontSize: 11, fontWeight: 700 }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="points" orientation="right" tick={{ fill: '#f59e0b', fontSize: 11, fontWeight: 700 }} tickFormatter={v => `${v} b.`} axisLine={false} tickLine={false} />
-                <Tooltip content={<ChartTooltip />} />
-                <Legend 
-                  verticalAlign="top" 
-                  height={36} 
-                  formatter={v => <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 px-2">{v}</span>} 
+              <AreaChart data={chartData} margin={{ top: 10, right: 15, left: 10, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="aumGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.35}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#71717a" strokeOpacity={0.15} vertical={false} />
+                <XAxis 
+                  dataKey="name" 
+                  tick={{ fill: '#71717a', fontSize: 11, fontWeight: 600 }} 
+                  axisLine={false} 
+                  tickLine={false} 
+                  dy={10} 
+                  minTickGap={25}
                 />
-                <Line yAxisId="aum" type="monotone" dataKey="AUM" name="Celkové AUM (Kč)" stroke="#3b82f6" strokeWidth={3} dot={false} activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} />
-                <Line yAxisId="points" type="monotone" dataKey="Body/rok" name="Pasivní body ( ročně)" stroke="#f59e0b" strokeWidth={2.5} dot={false} strokeDasharray="5 3" activeDot={{ r: 5, strokeWidth: 0, fill: '#f59e0b' }} />
-              </LineChart>
+                <YAxis 
+                  tickFormatter={v => `${(v / 1_000_000).toFixed(0)} mil. Kč`} 
+                  tick={{ fill: '#71717a', fontSize: 11, fontWeight: 700 }} 
+                  axisLine={false} 
+                  tickLine={false} 
+                  width={80}
+                />
+                <RechartsTooltip content={<CustomChartTooltip />} />
+                <Area 
+                  type="monotone" 
+                  dataKey="AUM" 
+                  name="Stav AUM" 
+                  stroke="#60a5fa" 
+                  strokeWidth={3} 
+                  fillOpacity={1} 
+                  fill="url(#aumGradient)" 
+                  activeDot={{ r: 6, strokeWidth: 0, fill: '#3b82f6' }} 
+                />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         )}
+      </div>
+
+      {/* Data Table Section */}
+      <div className="modern-card overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col">
+        <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-transparent">
+          <div>
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight">Detailní roční rozpad projekce</h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              Kliknutím na řádek či zaškrtávací políčko vyberete konkrétní roky pro výpočet v souhrnu dole.
+            </p>
+          </div>
+          {selectedYears.size > 0 && (
+            <button
+              type="button"
+              onClick={() => setSelectedYears(new Set())}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 rounded-xl transition-colors cursor-pointer border border-blue-200 dark:border-blue-500/20 shadow-xs"
+            >
+              <span>Zrušit výběr ({selectedYears.size})</span>
+            </button>
+          )}
+        </div>
+
+        <div className="overflow-x-auto max-h-[520px] custom-scrollbar">
+          <table className="w-full text-left border-collapse whitespace-nowrap">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-zinc-50 dark:bg-zinc-800/90 border-b border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 text-[10px] uppercase tracking-widest font-bold backdrop-blur-md select-none shadow-xs">
+                <th className="px-4 py-4 w-12 text-center">
+                  <button
+                    type="button"
+                    onClick={toggleAllSelection}
+                    className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 focus:outline-none flex items-center justify-center mx-auto cursor-pointer"
+                    title="Vybrat / zrušit výběr všech roků"
+                  >
+                    {selectedYears.size === annualData.length && annualData.length > 0 ? (
+                      <CheckSquare className="w-4 h-4 text-blue-600 dark:text-blue-400 stroke-[2.5]" />
+                    ) : (
+                      <Square className="w-4 h-4 text-zinc-400 stroke-[2]" />
+                    )}
+                  </button>
+                </th>
+                <th className="px-6 py-4">Rok</th>
+                <th className="px-6 py-4">Stav účtu</th>
+                <th className="px-6 py-4">Body / měs.</th>
+                <th className="px-6 py-4">Výplata / měs.</th>
+                <th className="px-6 py-4">Body / rok</th>
+                <th className="px-6 py-4">Výplata / rok</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/50 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="py-16 text-center text-zinc-400 dark:text-zinc-500 font-medium animate-pulse">
+                    Načítám data z portfolia pro výpočet predikcí...
+                  </td>
+                </tr>
+              ) : annualData.length > 0 ? (
+                annualData.map((row) => {
+                  const isSelected = selectedYears.has(row.year);
+                  return (
+                    <tr
+                      key={row.year}
+                      onClick={(e) => toggleRowSelection(row.year, e)}
+                      className={`table-row-hover transition-all cursor-pointer ${
+                        isSelected 
+                          ? 'bg-blue-50/60 dark:bg-blue-500/15 border-l-[3px] border-l-blue-500 font-semibold' 
+                          : ''
+                      }`}
+                    >
+                      <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={(e) => toggleRowSelection(row.year, e)}
+                          className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 focus:outline-none flex items-center justify-center mx-auto cursor-pointer"
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="w-4 h-4 text-blue-600 dark:text-blue-400 stroke-[2.5]" />
+                          ) : (
+                            <Square className="w-4 h-4 text-zinc-300 dark:text-zinc-600 stroke-[2]" />
+                          )}
+                        </button>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-zinc-900 dark:text-white">
+                        {row.year}. rok
+                      </td>
+                      <td className="px-6 py-4 tabular-nums font-mono font-semibold text-blue-600 dark:text-blue-400">
+                        {formatCurrencyFull(row.aum)}
+                      </td>
+                      <td className="px-6 py-4 tabular-nums font-mono text-amber-600 dark:text-amber-400 font-semibold">
+                        {formatPoints(row.pointsMonth)}
+                      </td>
+                      <td className="px-6 py-4 tabular-nums font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        {formatCurrencyFull(row.payoutMonth)}
+                      </td>
+                      <td className="px-6 py-4 tabular-nums font-mono text-zinc-800 dark:text-zinc-200">
+                        {formatPoints(row.pointsYear)}
+                      </td>
+                      <td className="px-6 py-4 tabular-nums font-mono font-semibold text-zinc-900 dark:text-zinc-100">
+                        {formatCurrencyFull(row.payoutYear)}
+                      </td>
+                    </tr>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-zinc-400 dark:text-zinc-500 font-medium">
+                    Žádná data k zobrazení.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Bottom Summary Footer */}
+        <div className="p-6 bg-zinc-50/80 dark:bg-zinc-800/40 border-t border-zinc-200 dark:border-zinc-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-1">
+                Součet bodů (<span className="text-amber-600 dark:text-amber-400 font-bold">{isSubsetSelected ? 'vybrané roky' : 'všechny roky'}</span>)
+              </p>
+              <p className="text-2xl font-bold font-mono text-zinc-900 dark:text-white tracking-tight tabular-nums">
+                {formatPoints(summaryPoints)}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 sm:text-right flex-row-reverse sm:flex-row">
+            <div>
+              <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-1">
+                Součet výplat (<span className="text-emerald-600 dark:text-emerald-400 font-bold">{isSubsetSelected ? 'vybrané roky' : 'všechny roky'}</span>)
+              </p>
+              <p className="text-2xl sm:text-3xl font-bold font-mono text-emerald-600 dark:text-emerald-400 tracking-tight tabular-nums">
+                {formatCurrencyFull(summaryPayout)}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0">
+              <Wallet className="w-5 h-5" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
