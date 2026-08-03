@@ -20,18 +20,33 @@ const colorSwatches = [
   '#ef4444', // Red
 ];
 
-const categoryLabels: Record<ProductCategory, string> = {
+const categoryLabels: Record<string, string> = {
   InvestmentFund: 'Cenné papíry',
   RealEstate: 'Nemovitosti',
+  Commodities: 'Komodity',
+  MoneyMarket: 'Peněžní trh',
+  LifeInsurance: 'Peněžní trh',
   Bonds: 'Dluhopisy a programy',
   Other: 'Ostatní produkty',
   PensionSavings: 'Penzijní spoření',
-  Commodities: 'Komodity',
   BuildingSavings: 'Stavební spoření',
-  LifeInsurance: 'Peněžní trh',
+  '0': 'Cenné papíry',
+  '6': 'Nemovitosti',
+  '5': 'Komodity',
+  '7': 'Peněžní trh',
+  '2': 'Peněžní trh',
 };
 
-const activeCategories: ProductCategory[] = ['InvestmentFund', 'RealEstate', 'Commodities', 'LifeInsurance', 'Bonds', 'Other'];
+const activeCategories: ProductCategory[] = ['InvestmentFund', 'RealEstate', 'Commodities', 'MoneyMarket' as any];
+
+const normalizeCategory = (cat?: string | number): ProductCategory => {
+  if (cat === 0 || cat === '0' || cat === 'InvestmentFund') return 'InvestmentFund';
+  if (cat === 6 || cat === '6' || cat === 'RealEstate') return 'RealEstate';
+  if (cat === 5 || cat === '5' || cat === 'Commodities') return 'Commodities';
+  if (cat === 7 || cat === '7' || cat === 'MoneyMarket' || cat === 2 || cat === '2' || cat === 'LifeInsurance') return 'MoneyMarket' as any;
+  if (typeof cat === 'string' && ['InvestmentFund', 'RealEstate', 'Commodities', 'MoneyMarket'].includes(cat)) return cat as ProductCategory;
+  return 'InvestmentFund';
+};
 
 export default function ProductEditModal({ isOpen, onClose, onSaved, productToEdit }: ProductEditModalProps) {
   const [name, setName] = useState('');
@@ -49,7 +64,7 @@ export default function ProductEditModal({ isOpen, onClose, onSaved, productToEd
   useEffect(() => {
     if (productToEdit) {
       setName(productToEdit.name);
-      setCategory(productToEdit.category);
+      setCategory(normalizeCategory(productToEdit.category));
       setCompany(productToEdit.company);
       setColorHex(productToEdit.colorHex || '#3b82f6');
       setCurrentAum(productToEdit.currentAum.toString());
@@ -282,7 +297,7 @@ export default function ProductEditModal({ isOpen, onClose, onSaved, productToEd
                       onChange={(e) => setMonthlyDeposit(e.target.value)}
                       className="w-full bg-white dark:bg-zinc-950 border border-emerald-200 dark:border-emerald-900/60 rounded-xl px-3.5 py-2.5 pr-16 text-sm text-emerald-600 dark:text-emerald-400 font-semibold tabular-nums focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all shadow-sm font-mono"
                     />
-                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-emerald-600/80 dark:text-emerald-400/80 font-semibold">Kč / m.</span>
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-emerald-600/80 dark:text-emerald-400/80 font-semibold">Kč / měs.</span>
                   </div>
                 </div>
 

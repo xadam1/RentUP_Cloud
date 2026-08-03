@@ -60,7 +60,7 @@ export const settingsApi = {
 
 export type ProductCategory =
   | 'InvestmentFund' | 'BuildingSavings' | 'LifeInsurance'
-  | 'PensionSavings' | 'Bonds' | 'Commodities' | 'RealEstate' | 'Other'
+  | 'PensionSavings' | 'Bonds' | 'Commodities' | 'RealEstate' | 'MoneyMarket' | 'Other' | string | number
 
 export type ProductCompany =
   | 'ZfpInvestments' | 'WoodAndCo' | 'Avant' | 'Conseq'

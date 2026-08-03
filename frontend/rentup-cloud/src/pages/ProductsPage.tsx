@@ -5,14 +5,20 @@ import { productsApi, type Product, type CreateProductRequest, type UpdateProduc
 // ── Enums → Czech labels ──────────────────────────────────────────────────────
 
 const CATEGORIES: Record<string, string> = {
-  InvestmentFund: 'Investiční fond',
+  InvestmentFund: 'Cenné papíry',
+  RealEstate: 'Nemovitosti',
+  Commodities: 'Komodity',
+  MoneyMarket: 'Peněžní trh',
+  LifeInsurance: 'Peněžní trh',
   BuildingSavings: 'Stavební spoření',
-  LifeInsurance: 'Životní pojištění',
   PensionSavings: 'Penzijní spoření',
   Bonds: 'Dluhopisy',
-  Commodities: 'Zlato / Komodity',
-  RealEstate: 'Nemovitosti',
   Other: 'Ostatní',
+  '0': 'Cenné papíry',
+  '6': 'Nemovitosti',
+  '5': 'Komodity',
+  '7': 'Peněžní trh',
+  '2': 'Peněžní trh',
 }
 
 const COMPANIES: Record<string, string> = {
