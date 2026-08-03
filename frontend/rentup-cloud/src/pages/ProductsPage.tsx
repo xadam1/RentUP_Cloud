@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, FlaskConical, ChevronUp, ChevronDown, Power } from 'lucide-react'
 import { productsApi, type Product, type CreateProductRequest, type UpdateProductRequest } from '@/lib/api'
+import { useModal } from '@/contexts/ModalContext'
 
 // ── Enums → Czech labels ──────────────────────────────────────────────────────
 
@@ -219,6 +220,7 @@ const INPUT = 'w-full bg-white/[0.06] border border-white/[0.1] rounded-xl px-3 
 // ── Products Page ─────────────────────────────────────────────────────────────
 
 export default function ProductsPage() {
+  const { confirm } = useModal()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [showInactive, setShowInactive] = useState(false)
@@ -237,7 +239,14 @@ export default function ProductsPage() {
   useEffect(() => { load() }, [showInactive]) // eslint-disable-line
 
   const handleDelete = async (product: Product) => {
-    if (!confirm(`Opravdu deaktivovat produkt "${product.name}"?\n(Historická data budou zachována)`)) return
+    const confirmed = await confirm({
+      title: 'Deaktivovat produkt?',
+      description: `Opravdu si přejete deaktivovat produkt "${product.name}"?\n(Historická data přitom budou zachována)`,
+      variant: 'warning',
+      confirmText: 'Deaktivovat',
+      cancelText: 'Zrušit'
+    })
+    if (!confirmed) return
     await productsApi.delete(product.id)
     load()
   }

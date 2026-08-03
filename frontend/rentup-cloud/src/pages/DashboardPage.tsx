@@ -10,7 +10,9 @@ import {
   PiggyBank,
   Check,
   X,
-  History
+  History,
+  ChevronDown,
+  CheckCircle2
 } from 'lucide-react';
 import { aumApi, type DashboardSummary, type AumSnapshot, type ProductDashboardItem } from '@/lib/api';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -105,6 +107,7 @@ export default function DashboardPage() {
   // UI state for charts & period comparison
   const [distributionView, setDistributionView] = useState<'categories' | 'products'>('products');
   const [historyPeriod, setHistoryPeriod] = useState<'1M' | '3M' | '6M' | 'YTD' | '1R' | 'MAX'>('YTD');
+  const [isPeriodMenuOpen, setIsPeriodMenuOpen] = useState(false);
   const [comparisonPeriod, setComparisonPeriod] = useState(() => localStorage.getItem('rentup_dashboard_comparison_period') || 'YTD');
 
   const { theme } = useTheme();
@@ -626,7 +629,7 @@ export default function DashboardPage() {
               <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Vývoj AUM</h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Historie spravovaného majetku</p>
             </div>
-            <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+            <div className="flex items-center gap-2 self-start sm:self-auto">
               <HistoryImportButton onImported={loadData} />
               <button
                 type="button"
@@ -634,29 +637,66 @@ export default function DashboardPage() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 transition-all shadow-sm cursor-pointer"
                 title="Správa a mazání historických záznamů AUM"
               >
-                <History className="w-3.5 h-3.5 text-indigo-500" />
-                <span>Správa historie</span>
+                <History className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                <span>Historie</span>
               </button>
               
-              {/* Interactive Period Selector */}
-              <div className="bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-lg flex text-xs font-semibold border border-zinc-200 dark:border-zinc-700/50 flex-wrap">
-              {(['1M', '3M', '6M', 'YTD', '1R', 'MAX'] as const).map((p: '1M' | '3M' | '6M' | 'YTD' | '1R' | 'MAX') => (
+              {/* Interactive Period Selector (Dropdown for mac/compact screens, ribbon on wide 2xl screens) */}
+              <div className="relative">
                 <button
-                  key={p}
                   type="button"
-                  onClick={() => setHistoryPeriod(p)}
-                  className={`px-2.5 py-1.5 rounded-md transition-colors cursor-pointer ${
-                    historyPeriod === p
-                      ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm font-bold'
-                      : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                  }`}
+                  onClick={() => setIsPeriodMenuOpen(!isPeriodMenuOpen)}
+                  className="flex 2xl:hidden items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 transition-all shadow-sm cursor-pointer"
                 >
-                  {p}
+                  <span>Období: <strong className="text-blue-600 dark:text-blue-400">{historyPeriod}</strong></span>
+                  <ChevronDown className="w-3.5 h-3.5 text-zinc-500 flex-shrink-0" />
                 </button>
-              ))}
+
+                {isPeriodMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setIsPeriodMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-2 w-36 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl shadow-xl p-1 z-40 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-150">
+                      {(['1M', '3M', '6M', 'YTD', '1R', 'MAX'] as const).map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => {
+                            setHistoryPeriod(p);
+                            setIsPeriodMenuOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-between ${
+                            historyPeriod === p
+                              ? 'bg-blue-50 dark:bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold'
+                              : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/60'
+                          }`}
+                        >
+                          <span>{p}</span>
+                          {historyPeriod === p && <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                <div className="hidden 2xl:flex bg-zinc-100 dark:bg-zinc-800/80 p-1 rounded-lg text-xs font-semibold border border-zinc-200 dark:border-zinc-700/50">
+                  {(['1M', '3M', '6M', 'YTD', '1R', 'MAX'] as const).map((p: '1M' | '3M' | '6M' | 'YTD' | '1R' | 'MAX') => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setHistoryPeriod(p)}
+                      className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                        historyPeriod === p
+                          ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm font-bold'
+                          : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
           <div className="w-full min-h-[220px] flex-1">
             {filteredTrendData.length > 0 ? (

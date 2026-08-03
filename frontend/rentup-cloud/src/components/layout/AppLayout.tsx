@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { 
   LayoutDashboard, 
@@ -9,7 +10,9 @@ import {
   Settings, 
   LogOut, 
   Sun, 
-  Moon 
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -30,6 +33,15 @@ export default function AppLayout() {
   const { user, signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const location = useLocation()
+  const [isCollapsed, setIsCollapsed] = useState(() => localStorage.getItem('sidebar_collapsed') === 'true')
+
+  const toggleSidebar = () => {
+    setIsCollapsed(prev => {
+      const next = !prev;
+      localStorage.setItem('sidebar_collapsed', String(next));
+      return next;
+    });
+  };
 
   const getHeaderInfo = () => {
     const path = location.pathname
@@ -62,41 +74,83 @@ export default function AppLayout() {
       </div>
 
       {/* Sidebar */}
-      <aside className="w-64 flex flex-col glass-sidebar z-10 flex-shrink-0 transition-colors duration-300">
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-zinc-200/80 dark:border-zinc-800/80">
-          <img 
-            src="/assets/RentUP_Logo_Dark.png" 
-            alt="RentUP Logo" 
-            className="h-8 w-auto block dark:hidden object-contain"
-          />
-          <img 
-            src="/assets/RentUP_Logo_White.png" 
-            alt="RentUP Logo" 
-            className="h-8 w-auto hidden dark:block object-contain"
-          />
+      <aside className={`flex flex-col glass-sidebar z-10 flex-shrink-0 transition-all duration-300 ease-in-out relative ${
+        isCollapsed ? 'w-20' : 'w-64'
+      }`}>
+        {/* Logo & Toggle */}
+        <div className={`flex items-center ${isCollapsed ? 'justify-center px-4 py-5' : 'justify-between px-6 py-5'} border-b border-zinc-200/80 dark:border-zinc-800/80 transition-all duration-300`}>
+          {!isCollapsed ? (
+            <div className="flex items-center gap-3 overflow-hidden">
+              <img 
+                src="/assets/RentUP_Logo_Dark.png" 
+                alt="RentUP Logo" 
+                className="h-8 w-auto block dark:hidden object-contain transition-all duration-300"
+              />
+              <img 
+                src="/assets/RentUP_Logo_White.png" 
+                alt="RentUP Logo" 
+                className="h-8 w-auto hidden dark:block object-contain transition-all duration-300"
+              />
+            </div>
+          ) : (
+            <img 
+              src="/assets/RentUP_Icon.png" 
+              alt="RentUP Icon" 
+              className="h-8 w-8 object-contain transition-all duration-300 animate-in zoom-in duration-200"
+            />
+          )}
+          
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            title={isCollapsed ? 'Rozbalit navigační panel' : 'Sbalit navigační panel'}
+            className={`${
+              isCollapsed ? 'hidden' : 'flex'
+            } items-center justify-center w-7 h-7 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 transition-all cursor-pointer`}
+          >
+            <PanelLeftClose className="w-4 h-4 stroke-[2]" />
+          </button>
         </div>
 
+        {/* Toggle button when collapsed */}
+        {isCollapsed && (
+          <div className="px-3 pt-3 flex justify-center">
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              title="Rozbalit navigační panel"
+              className="flex items-center justify-center w-9 h-9 rounded-xl text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-500/10 transition-all cursor-pointer shadow-2xs border border-transparent hover:border-blue-500/20"
+            >
+              <PanelLeftOpen className="w-5 h-5 stroke-[2]" />
+            </button>
+          </div>
+        )}
+
         {/* Navigation Sections */}
-        <nav className="flex-1 px-4 py-6 space-y-6 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto custom-scrollbar">
           {/* AUM & Příjmy */}
           <div>
-            <div className="px-3 mb-2 text-[11px] font-bold tracking-wider text-zinc-400 dark:text-zinc-500 uppercase">
-              AUM & Příjmy
-            </div>
+            {!isCollapsed ? (
+              <div className="px-3 mb-2 text-[11px] font-bold tracking-wider text-zinc-400 dark:text-zinc-500 uppercase transition-opacity duration-300">
+                AUM & Příjmy
+              </div>
+            ) : (
+              <div className="h-px bg-zinc-200/80 dark:bg-zinc-800/80 my-2 mx-2" />
+            )}
             <div className="space-y-1">
               {aumNavItems.map(({ to, icon: Icon, label }) => (
                 <NavLink
                   key={to}
                   to={to}
+                  title={isCollapsed ? label : undefined}
                   className={({ isActive }) =>
-                    `sidebar-item flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium ${
-                      isActive ? 'active' : ''
+                    `sidebar-item flex items-center ${isCollapsed ? 'justify-center p-3' : 'gap-3 px-3.5 py-2.5'} text-sm font-medium transition-all duration-200 rounded-xl ${
+                      isActive ? 'active shadow-sm font-semibold' : ''
                     }`
                   }
                 >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span>{label}</span>
+                  <Icon className={`${isCollapsed ? 'w-5 h-5' : 'w-4 h-4'} flex-shrink-0 transition-all duration-200`} />
+                  {!isCollapsed && <span className="truncate">{label}</span>}
                 </NavLink>
               ))}
             </div>
@@ -104,22 +158,27 @@ export default function AppLayout() {
 
           {/* Obchody */}
           <div>
-            <div className="px-3 mb-2 text-[11px] font-bold tracking-wider text-zinc-400 dark:text-zinc-500 uppercase">
-              Obchody
-            </div>
+            {!isCollapsed ? (
+              <div className="px-3 mb-2 text-[11px] font-bold tracking-wider text-zinc-400 dark:text-zinc-500 uppercase transition-opacity duration-300">
+                Obchody
+              </div>
+            ) : (
+              <div className="h-px bg-zinc-200/80 dark:bg-zinc-800/80 my-2 mx-2" />
+            )}
             <div className="space-y-1">
               {dealsNavItems.map(({ to, icon: Icon, label }) => (
                 <NavLink
                   key={to}
                   to={to}
+                  title={isCollapsed ? label : undefined}
                   className={({ isActive }) =>
-                    `sidebar-item flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium ${
-                      isActive ? 'active' : ''
+                    `sidebar-item flex items-center ${isCollapsed ? 'justify-center p-3' : 'gap-3 px-3.5 py-2.5'} text-sm font-medium transition-all duration-200 rounded-xl ${
+                      isActive ? 'active shadow-sm font-semibold' : ''
                     }`
                   }
                 >
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span>{label}</span>
+                  <Icon className={`${isCollapsed ? 'w-5 h-5' : 'w-4 h-4'} flex-shrink-0 transition-all duration-200`} />
+                  {!isCollapsed && <span className="truncate">{label}</span>}
                 </NavLink>
               ))}
             </div>
@@ -127,37 +186,59 @@ export default function AppLayout() {
         </nav>
         
         {/* Footer with Settings & Profile */}
-        <div className="px-4 py-4 border-t border-zinc-200/80 dark:border-zinc-800/80 space-y-2">
-          {/* Nastavení přesunto dolů */}
+        <div className={`px-3 py-4 border-t border-zinc-200/80 dark:border-zinc-800/80 space-y-2 transition-all duration-300`}>
           <NavLink
             to="/settings"
+            title={isCollapsed ? 'Nastavení' : undefined}
             className={({ isActive }) =>
-              `sidebar-item flex items-center gap-3 px-3.5 py-2.5 text-sm font-medium ${
-                isActive ? 'active' : ''
+              `sidebar-item flex items-center ${isCollapsed ? 'justify-center p-3' : 'gap-3 px-3.5 py-2.5'} text-sm font-medium transition-all duration-200 rounded-xl ${
+                isActive ? 'active shadow-sm font-semibold' : ''
               }`
             }
           >
-            <Settings className="w-4 h-4 flex-shrink-0" />
-            <span>Nastavení</span>
+            <Settings className={`${isCollapsed ? 'w-5 h-5' : 'w-4 h-4'} flex-shrink-0 transition-all duration-200`} />
+            {!isCollapsed && <span className="truncate">Nastavení</span>}
           </NavLink>
 
-          <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 flex items-center justify-between px-2">
-            <div className="flex items-center gap-2.5 overflow-hidden">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-sm text-white text-xs font-semibold">
-                {user?.email?.[0]?.toUpperCase() ?? 'U'}
+          <div className="pt-2 border-t border-zinc-200/60 dark:border-zinc-800/60 flex items-center justify-between px-1">
+            {!isCollapsed ? (
+              <>
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center flex-shrink-0 shadow-sm text-white text-xs font-semibold">
+                    {user?.email?.[0]?.toUpperCase() ?? 'U'}
+                  </div>
+                  <div className="truncate">
+                    <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate">{user?.email?.split('@')[0]}</p>
+                    <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={signOut}
+                  title="Odhlásit se"
+                  className="p-2 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <div className="w-full flex flex-col items-center gap-2 py-1">
+                <div 
+                  className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center shadow-sm text-white text-xs font-semibold cursor-help"
+                  title={`${user?.email ?? 'Uživatel'}`}
+                >
+                  {user?.email?.[0]?.toUpperCase() ?? 'U'}
+                </div>
+                <button
+                  type="button"
+                  onClick={signOut}
+                  title="Odhlásit se"
+                  className="p-2 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
               </div>
-              <div className="truncate">
-                <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate">{user?.email?.split('@')[0]}</p>
-                <p className="text-[10px] text-zinc-400 truncate">{user?.email}</p>
-              </div>
-            </div>
-            <button
-              onClick={signOut}
-              title="Odhlásit se"
-              className="p-2 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+            )}
           </div>
         </div>
       </aside>

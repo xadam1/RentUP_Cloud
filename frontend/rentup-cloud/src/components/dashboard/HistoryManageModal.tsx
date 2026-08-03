@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { X, Trash2, History, AlertCircle, Calendar } from 'lucide-react'
 import { aumApi, type AumSnapshot } from '@/lib/api'
+import { useModal } from '@/contexts/ModalContext'
 
 interface Props {
   open: boolean
@@ -9,6 +11,7 @@ interface Props {
 }
 
 export default function HistoryManageModal({ open, onClose, onUpdated }: Props) {
+  const { confirm, alert } = useModal()
   const [snapshots, setSnapshots] = useState<AumSnapshot[]>([])
   const [loading, setLoading] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -35,7 +38,14 @@ export default function HistoryManageModal({ open, onClose, onUpdated }: Props) 
   }
 
   const handleDelete = async (id: string, dateStr: string) => {
-    if (!window.confirm(`Opravdu si přejete trvale smazat záznam z data ${new Date(dateStr).toLocaleDateString('cs-CZ')}?`)) {
+    const confirmed = await confirm({
+      title: 'Smazat historický záznam?',
+      description: `Opravdu si přejete trvale smazat záznam z data ${new Date(dateStr).toLocaleDateString('cs-CZ')}?`,
+      variant: 'danger',
+      confirmText: 'Smazat záznam',
+      cancelText: 'Zrušit'
+    })
+    if (!confirmed) {
       return
     }
     setDeletingId(id)
@@ -44,14 +54,25 @@ export default function HistoryManageModal({ open, onClose, onUpdated }: Props) 
       setSnapshots(prev => prev.filter(s => s.id !== id))
       onUpdated()
     } catch {
-      alert('Chyba při mazání záznamu.')
+      await alert({
+        title: 'Chyba',
+        description: 'Chyba při mazání záznamu.',
+        variant: 'danger'
+      })
     } finally {
       setDeletingId(null)
     }
   }
 
   const handleClearAll = async () => {
-    if (!window.confirm('VAROVÁNÍ: Opravdu chcete vymazat CELOU historii denních AUM záznamů z databáze? Tato akce je nevratná!')) {
+    const confirmed = await confirm({
+      title: 'Vymazat celou historii?',
+      description: 'VAROVÁNÍ: Opravdu chcete vymazat CELOU historii denních AUM záznamů z databáze? Tato akce je nevratná!',
+      variant: 'danger',
+      confirmText: 'Vymazat historii',
+      cancelText: 'Zrušit'
+    })
+    if (!confirmed) {
       return
     }
     setLoading(true)
@@ -60,14 +81,18 @@ export default function HistoryManageModal({ open, onClose, onUpdated }: Props) 
       setSnapshots([])
       onUpdated()
     } catch {
-      alert('Chyba při promazávání historie.')
+      await alert({
+        title: 'Chyba',
+        description: 'Chyba při promazávání historie.',
+        variant: 'danger'
+      })
       setLoading(false)
     }
   }
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 modal-backdrop animate-in fade-in duration-200" onClick={onClose} />
       
@@ -175,6 +200,7 @@ export default function HistoryManageModal({ open, onClose, onUpdated }: Props) 
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

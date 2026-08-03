@@ -4,6 +4,7 @@ import {
   dealsApi, productsApi,
   type Deal, type CreateDealRequest, type DealStatus, type Product,
 } from '@/lib/api'
+import { useModal } from '@/contexts/ModalContext'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -259,6 +260,7 @@ function DealDialog({ deal, products, onClose, onSaved }: {
 // ── Deals Page ────────────────────────────────────────────────────────────────
 
 export default function DealsPage() {
+  const { confirm, alert } = useModal()
   const [deals, setDeals] = useState<Deal[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [stats, setStats] = useState<{ totalPoints: number; totalCommissionCzk: number; totalCount: number } | null>(null)
@@ -287,12 +289,23 @@ export default function DealsPage() {
   useEffect(() => { load() }, [statusFilter])
 
   const handleDelete = async (deal: Deal) => {
-    if (!window.confirm(`Smazat obchod s klientem "${deal.clientName}"?`)) return
+    const confirmed = await confirm({
+      title: 'Smazat obchod?',
+      description: `Opravdu si přejete smazat obchod s klientem "${deal.clientName}"?`,
+      variant: 'danger',
+      confirmText: 'Smazat obchod',
+      cancelText: 'Zrušit'
+    })
+    if (!confirmed) return
     try {
       await dealsApi.delete(deal.id)
       load()
     } catch {
-      alert('Došlo k chybě při mazání záznamu.');
+      await alert({
+        title: 'Chyba',
+        description: 'Došlo k chybě při mazání záznamu.',
+        variant: 'danger'
+      })
     }
   }
 

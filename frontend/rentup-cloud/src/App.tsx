@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { ThemeProvider } from '@/contexts/ThemeContext'
+import { ModalProvider } from '@/contexts/ModalContext'
 import AppLayout from '@/components/layout/AppLayout'
 import LoginPage from '@/pages/LoginPage'
 import DashboardPage from '@/pages/DashboardPage'
@@ -23,23 +24,25 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="projections" element={<ProjectionsPage />} />
-              <Route path="products" element={<Navigate to="/dashboard" replace />} />
-              <Route path="deals" element={<DealsPage />} />
-              <Route path="clients" element={<ComingSoonPage />} />
-              <Route path="recommendations" element={<ComingSoonPage />} />
-              <Route path="statistics" element={<ComingSoonPage />} />
-              <Route path="settings" element={<SettingsPage />} />
-            </Route>
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        </BrowserRouter>
+        <ModalProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/" element={<PrivateRoute><AppLayout /></PrivateRoute>}>
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard" element={<DashboardPage />} />
+                <Route path="projections" element={<ProjectionsPage />} />
+                <Route path="products" element={<Navigate to="/dashboard" replace />} />
+                <Route path="deals" element={<DealsPage />} />
+                <Route path="clients" element={<ComingSoonPage />} />
+                <Route path="recommendations" element={<ComingSoonPage />} />
+                <Route path="statistics" element={<ComingSoonPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+              </Route>
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </ModalProvider>
       </AuthProvider>
     </ThemeProvider>
   )

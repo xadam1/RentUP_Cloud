@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Check, AlertCircle, Trash2, Calculator, Code, Info, ChevronDown, ChevronUp, Save } from 'lucide-react';
 import { productsApi, type ProductDashboardItem, type ProductCategory, type ProductCompany } from '@/lib/api';
+import { useModal } from '@/contexts/ModalContext';
 
 interface ProductEditModalProps {
   isOpen: boolean;
@@ -62,6 +64,7 @@ const formatNumberWithSpaces = (val?: string | number): string => {
 };
 
 export default function ProductEditModal({ isOpen, onClose, onSaved, productToEdit }: ProductEditModalProps) {
+  const { confirm, alert } = useModal();
   const [name, setName] = useState('');
   const [category, setCategory] = useState<ProductCategory>('InvestmentFund');
   const [company, setCompany] = useState<ProductCompany>('Other');
@@ -160,21 +163,34 @@ export default function ProductEditModal({ isOpen, onClose, onSaved, productToEd
 
   const handleDelete = async () => {
     if (!productToEdit) return;
-    if (window.confirm(`Opravdu si přejete odebrat produkt "${productToEdit.name}"?`)) {
+    const confirmed = await confirm({
+      title: 'Smazat produkt?',
+      description: `Opravdu si přejete trvale odebrat produkt "${productToEdit.name}" z portfolia?`,
+      variant: 'danger',
+      confirmText: 'Smazat produkt',
+      cancelText: 'Zrušit'
+    });
+    if (confirmed) {
       setLoading(true);
       try {
         await productsApi.delete(productToEdit.id);
         onSaved();
         onClose();
       } catch (err: any) {
-        setError(err?.response?.data?.error || 'Došlo k chybě při mazání produktu.');
+        await alert({
+          title: 'Chyba',
+          description: err?.response?.data?.error || 'Došlo k chybě při mazání produktu.',
+          variant: 'danger'
+        });
       } finally {
         setLoading(false);
       }
     }
   };
 
-  return (
+  if (!isOpen) return null;
+
+  return createPortal(
     <div 
       className="fixed inset-0 z-50 flex items-center justify-center p-4 modal-backdrop animate-in fade-in duration-200"
       onClick={(e) => e.stopPropagation()} 
@@ -205,7 +221,7 @@ export default function ProductEditModal({ isOpen, onClose, onSaved, productToEd
             <div className="space-y-4">
               <h3 className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-2">Identifikace a vzhled</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-3">
-                <div className="space-y-4">
+                <div className="flex flex-col justify-between h-full space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Název produktu <span className="text-red-500">*</span></label>
                     <input
@@ -234,7 +250,7 @@ export default function ProductEditModal({ isOpen, onClose, onSaved, productToEd
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="flex flex-col justify-between h-full space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-2.5">Barva produktu v grafech</label>
                     <div className="flex gap-2.5 flex-wrap items-center">
@@ -271,31 +287,24 @@ export default function ProductEditModal({ isOpen, onClose, onSaved, productToEd
                     </div>
                   </div>
 
-                  {/* Beautified Custom Switch / Card for includeInAum */}
-                  <div className="pt-1">
+                  {/* Beautified Custom Switch / Card for includeInAum without redundant checkbox icon */}
+                  <div>
                     <button
                       type="button"
                       onClick={() => setIncludeInAum(!includeInAum)}
-                      className={`w-full flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer select-none ${
+                      className={`w-full flex items-center justify-between p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
                         includeInAum
                           ? 'bg-emerald-50/80 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/30 text-emerald-950 dark:text-emerald-100 shadow-xs'
                           : 'bg-zinc-100/70 dark:bg-zinc-800/60 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400'
                       }`}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors flex-shrink-0 ${
-                          includeInAum ? 'bg-emerald-500 text-white shadow-xs' : 'bg-zinc-300 dark:bg-zinc-700 text-zinc-500'
-                        }`}>
-                          {includeInAum ? <Check className="w-4 h-4 stroke-[2.5]" /> : <X className="w-4 h-4 stroke-[2]" />}
-                        </div>
-                        <div className="text-left min-w-0">
-                          <div className="text-xs font-bold truncate">Započítat do AUM portfolia</div>
-                          <div className="text-[10px] text-emerald-700/80 dark:text-zinc-400 truncate">
-                            {includeInAum ? 'Aktivně zahrnuto do statistik AUM' : 'Skryto z celkového souhrnu'}
-                          </div>
+                      <div className="text-left min-w-0 pr-2">
+                        <div className="text-xs font-bold truncate">Započítat do AUM portfolia</div>
+                        <div className="text-[10px] text-emerald-700/80 dark:text-zinc-400 truncate mt-0.5">
+                          {includeInAum ? 'Aktivně zahrnuto do statistik AUM' : 'Skryto z celkového souhrnu'}
                         </div>
                       </div>
-                      <div className={`w-10 h-6 flex items-center rounded-full p-1 duration-200 transition-colors flex-shrink-0 ml-2 ${
+                      <div className={`w-10 h-6 flex items-center rounded-full p-1 duration-200 transition-colors flex-shrink-0 ${
                         includeInAum ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-700'
                       }`}>
                         <div className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-200 ${
@@ -450,7 +459,8 @@ export default function ProductEditModal({ isOpen, onClose, onSaved, productToEd
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

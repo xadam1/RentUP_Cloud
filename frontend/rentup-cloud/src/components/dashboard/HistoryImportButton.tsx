@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { Download, X, AlertTriangle, CheckCircle2, Calendar } from 'lucide-react'
 import { aumApi, type HistoryCsvPreviewRow } from '@/lib/api'
 
@@ -61,8 +62,8 @@ export default function HistoryImportButton({ onImported }: Props) {
         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 transition-all shadow-sm cursor-pointer"
         title="Importovat časové řady z CSV (např. Vývoj AUM)"
       >
-        <Download className="w-3.5 h-3.5 text-blue-500" />
-        <span>Import z CSV</span>
+        <Download className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+        <span>Import</span>
       </button>
       <input
         ref={fileRef}
@@ -78,7 +79,7 @@ export default function HistoryImportButton({ onImported }: Props) {
       />
 
       {/* Modal */}
-      {open && (
+      {open && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="fixed inset-0 modal-backdrop animate-in fade-in duration-200" onClick={reset} />
           
@@ -224,7 +225,8 @@ export default function HistoryImportButton({ onImported }: Props) {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )

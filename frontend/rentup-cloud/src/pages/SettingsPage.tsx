@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import { settingsApi, aumApi, type UpdateSettingsRequest } from '@/lib/api'
 import { useTheme } from '@/contexts/ThemeContext'
 import { Database, Sparkles, CheckCircle2, AlertCircle, RefreshCw, TrendingUp } from 'lucide-react'
+import { useModal } from '@/contexts/ModalContext'
 
 export default function SettingsPage() {
+  const { confirm, alert } = useModal()
   const [form, setForm] = useState<UpdateSettingsRequest>({ basePointValue: 150, monthlyGoalPoints: 0, theme: 'dark' })
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -30,13 +32,24 @@ export default function SettingsPage() {
       await settingsApi.update({ ...form, theme })
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
-    } catch (err) {
-      alert('Nepodařilo se uložit nastavení.')
+    } catch {
+      await alert({
+        title: 'Chyba',
+        description: 'Nepodařilo se uložit nastavení.',
+        variant: 'danger'
+      })
     }
   }
 
   const handleSeedTestData = async () => {
-    if (!window.confirm('Přejete si do vašeho účtu nahrát sadu vzorových investičních aktiv (Conseq, AVANT, Wood) s historií snímků portfolia? Tato akce je vhodná pro otestování nového rozhraní.')) {
+    const confirmed = await confirm({
+      title: 'Nahrát ukázková data?',
+      description: 'Přejete si do vašeho účtu nahrát sadu vzorových investičních aktiv (Conseq, AVANT, Wood) s historií snímků portfolia? Tato akce je vhodná pro otestování nového rozhraní.',
+      variant: 'info',
+      confirmText: 'Nahrát ukázková data',
+      cancelText: 'Zrušit'
+    })
+    if (!confirmed) {
       return
     }
 
