@@ -45,6 +45,8 @@ coverage/
 # Secrets & environment — commit only placeholder files
 # Real secrets must NEVER be committed
 **/secrets.json
+appsettings.Development.json
+appsettings.*.json
 **/*.pfx
 **/*.key
 
