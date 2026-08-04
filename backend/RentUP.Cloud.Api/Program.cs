@@ -68,7 +68,17 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            policy.WithOrigins(allowedOrigins)
+            policy.SetIsOriginAllowed(origin =>
+                  {
+                      if (allowedOrigins.Contains(origin)) return true;
+                      try
+                      {
+                          var host = new Uri(origin).Host;
+                          return host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase) ||
+                                 host.EndsWith(".azurewebsites.net", StringComparison.OrdinalIgnoreCase);
+                      }
+                      catch { return false; }
+                  })
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials();
