@@ -9,9 +9,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
-
-  const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const [showInviteDialog, setShowInviteDialog] = useState(false)
 
   if (authLoading) return null
 
@@ -23,22 +21,10 @@ export default function LoginPage() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    setSuccessMsg(null)
 
-    if (mode === 'signup') {
-      const { data, error } = await supabase.auth.signUp({ email, password })
-      if (error) {
-        setError(translateError(error.message))
-      } else if (data.user && data.user.identities?.length === 0) {
-        setError('Uživatel s tímto e-mailem již existuje. Přihlaste se prosím.')
-      } else {
-        setSuccessMsg('Účet byl úspěšně vytvořen! Pokud je vyžadováno potvrzení, zkontrolujte svůj e-mail a klikněte na potvrzovací odkaz.')
-      }
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
-      if (error) {
-        setError(translateError(error.message))
-      }
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) {
+      setError(translateError(error.message))
     }
     setLoading(false)
   }
@@ -82,7 +68,7 @@ export default function LoginPage() {
         {/* Card */}
         <div className="modern-card p-8 shadow-2xl backdrop-blur-xl border border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90">
           <h2 className="text-zinc-900 dark:text-white font-bold text-lg mb-6">
-            {mode === 'login' ? 'Přihlášení do účtu' : 'Registrace nového účtu'}
+            Přihlášení do účtu
           </h2>
 
           <form onSubmit={handle} className="space-y-4">
@@ -116,32 +102,64 @@ export default function LoginPage() {
               </p>
             )}
 
-            {successMsg && (
-              <p className="text-emerald-600 dark:text-emerald-400 text-sm bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 font-medium">
-                {successMsg}
-              </p>
-            )}
-
             <button
               type="submit"
               disabled={loading}
               className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl py-3 text-sm transition-all duration-200 disabled:opacity-50 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/35 hover:-translate-y-px active:translate-y-0"
             >
-              {loading ? 'Ověřování...' : mode === 'login' ? 'Přihlásit se do RentUP' : 'Vytvořit poradenský účet'}
+              {loading ? 'Ověřování...' : 'Přihlásit se do RentUP'}
             </button>
           </form>
 
           <p className="text-center text-zinc-500 dark:text-zinc-400 text-sm mt-6">
-            {mode === 'login' ? 'Zatím nemáte přístup?' : 'Máte již svůj účet?'}{' '}
+            Zatím nemáte přístup?{' '}
             <button
-              onClick={() => setMode(m => m === 'login' ? 'signup' : 'login')}
+              type="button"
+              onClick={() => setShowInviteDialog(true)}
               className="text-blue-600 dark:text-blue-400 font-semibold hover:underline transition-colors"
             >
-              {mode === 'login' ? 'Založit účet zdarma' : 'Přejít k přihlášení'}
+              Zažádat o registraci
             </button>
           </p>
         </div>
       </div>
+
+      {/* Invite Only Modal Dialog */}
+      {showInviteDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="modern-card p-6 md:p-8 max-w-md w-full shadow-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 relative text-center animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h3 className="text-zinc-900 dark:text-white font-bold text-lg mb-2">
+              Aplikace je pouze pro zvané
+            </h3>
+            <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed mb-6">
+              RentUP Cloud funguje momentálně v režimu <strong>Invite-Only</strong>. Pro registraci a zřízení nového přístupového účtu prosím kontaktujte správce webu prostřednictvím e-mailu volnou formou.
+            </p>
+            
+            <a
+              href="mailto:jan.adam@zfpa.cz?subject=Žádost%20o%20registraci%20do%20RentUP%20Cloud"
+              className="flex items-center justify-center gap-2 w-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800/80 dark:hover:bg-zinc-800 text-zinc-900 dark:text-white font-semibold rounded-xl py-3 text-sm transition-all duration-200 border border-zinc-300/50 dark:border-zinc-700/50 mb-3 group"
+            >
+              <svg className="w-4 h-4 text-blue-500 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              jan.adam@zfpa.cz
+            </a>
+
+            <button
+              type="button"
+              onClick={() => setShowInviteDialog(false)}
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl py-3 text-sm transition-all duration-200 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/35"
+            >
+              Rozumím, zavřít
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
