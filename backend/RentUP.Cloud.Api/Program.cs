@@ -75,7 +75,9 @@ builder.Services.AddCors(options =>
                       {
                           var host = new Uri(origin).Host;
                           return host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase) ||
-                                 host.EndsWith(".azurewebsites.net", StringComparison.OrdinalIgnoreCase);
+                                 host.EndsWith(".azurewebsites.net", StringComparison.OrdinalIgnoreCase) ||
+                                 host.Equals("rent-up.cz", StringComparison.OrdinalIgnoreCase) ||
+                                 host.EndsWith(".rent-up.cz", StringComparison.OrdinalIgnoreCase);
                       }
                       catch { return false; }
                   })
