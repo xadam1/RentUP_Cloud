@@ -32,15 +32,15 @@ const formatAbbrevVal = (value: number) => {
 
 const formatChartAxis = (val: number) => {
   if (val >= 1_000_000_000) {
-    return `${(val / 1_000_000_000).toFixed(1).replace('.', ',')} mld. Kč`
+    return `${(val / 1_000_000_000).toFixed(1).replace('.', ',')} mld.`
   }
   if (val >= 1_000_000) {
-    return `${(val / 1_000_000).toFixed(0).replace('.', ',')} mil. Kč`
+    return `${(val / 1_000_000).toFixed(0)} mil.`
   }
   if (val >= 1_000) {
-    return `${(val / 1_000).toFixed(0).replace('.', ',')} k Kč`
+    return `${(val / 1_000).toFixed(0)} k`
   }
-  return `${val} Kč`
+  return `${val}`
 }
 
 function CustomChartTooltip({ active, payload, label }: any) {
@@ -409,7 +409,7 @@ export default function ProjectionsPage() {
                   tick={{ fill: '#71717a', fontSize: 11, fontWeight: 700 }} 
                   axisLine={false} 
                   tickLine={false} 
-                  width={95}
+                  width={55}
                 />
                 <RechartsTooltip content={<CustomChartTooltip />} />
                 <Area 
@@ -448,7 +448,7 @@ export default function ProjectionsPage() {
           )}
         </div>
 
-        <div className="overflow-x-auto max-h-[520px] custom-scrollbar">
+        <div className="overflow-x-auto max-h-[520px] custom-scrollbar hidden md:block">
           <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead className="sticky top-0 z-10">
               <tr className="bg-zinc-50 dark:bg-zinc-800/90 border-b border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 text-[10px] uppercase tracking-widest font-bold backdrop-blur-md select-none shadow-xs">
@@ -537,6 +537,99 @@ export default function ProjectionsPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobilní roční rozpad s možností výběru (md:hidden) */}
+        <div className="md:hidden max-h-[520px] overflow-y-auto p-3.5 space-y-3 bg-zinc-50/50 dark:bg-zinc-900/40">
+          <div className="flex items-center justify-between px-3 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-xl text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+            <button 
+              type="button"
+              onClick={toggleAllSelection}
+              className="inline-flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold cursor-pointer"
+            >
+              {selectedYears.size === annualData.length && annualData.length > 0 ? (
+                <CheckSquare className="w-4 h-4 stroke-[2.5]" />
+              ) : (
+                <Square className="w-4 h-4 stroke-[2]" />
+              )}
+              <span>{selectedYears.size === annualData.length ? 'Zrušit celý výběr' : 'Vybrat všeobecně'}</span>
+            </button>
+            <span className="text-zinc-400 font-medium">Vybráno {selectedYears.size} / {annualData.length}</span>
+          </div>
+
+          {loading ? (
+            <div className="py-12 text-center text-zinc-400 text-sm animate-pulse">
+              Načítám data pro výpočet predikcí...
+            </div>
+          ) : annualData.length > 0 ? (
+            annualData.map((row) => {
+              const isSelected = selectedYears.has(row.year);
+              return (
+                <div
+                  key={row.year}
+                  onClick={(e) => toggleRowSelection(row.year, e)}
+                  className={`bg-white dark:bg-zinc-800/90 rounded-2xl p-4 border transition-all cursor-pointer space-y-3 shadow-xs active:scale-[0.98] relative ${
+                    isSelected 
+                      ? 'border-blue-500/80 bg-blue-50/20 dark:bg-blue-500/15 ring-1 ring-blue-500/50' 
+                      : 'border-zinc-200/80 dark:border-zinc-700/80'
+                  }`}
+                >
+                  <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-700/50 pb-2.5">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={(e) => toggleRowSelection(row.year, e)}
+                        className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 focus:outline-none"
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="w-5 h-5 text-blue-600 dark:text-blue-400 stroke-[2.5]" />
+                        ) : (
+                          <Square className="w-5 h-5 text-zinc-300 dark:text-zinc-600 stroke-[2]" />
+                        )}
+                      </button>
+                      <span className="text-base font-bold text-zinc-900 dark:text-white">{row.year}. rok</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[10px] uppercase font-semibold text-zinc-400 block tracking-wider">Stav účtu (AUM)</span>
+                      <span className="text-sm font-extrabold font-mono text-blue-600 dark:text-blue-400 tabular-nums">
+                        {formatCurrencyFull(row.aum)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5 pt-0.5 text-xs">
+                    <div className="bg-zinc-50 dark:bg-zinc-800/60 rounded-xl p-2.5 border border-zinc-100 dark:border-zinc-700/50 space-y-1">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide block">Měsíční průměr</span>
+                      <div className="flex justify-between items-baseline font-mono">
+                        <span className="text-zinc-500 text-[11px]">Body:</span>
+                        <span className="font-bold text-amber-600 dark:text-amber-400">{formatPoints(row.pointsMonth)} b.</span>
+                      </div>
+                      <div className="flex justify-between items-baseline font-mono">
+                        <span className="text-zinc-500 text-[11px]">Výplata:</span>
+                        <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{formatCurrencyFull(row.payoutMonth)}</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-zinc-50 dark:bg-zinc-800/60 rounded-xl p-2.5 border border-zinc-100 dark:border-zinc-700/50 space-y-1">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide block">Roční součet</span>
+                      <div className="flex justify-between items-baseline font-mono">
+                        <span className="text-zinc-500 text-[11px]">Body:</span>
+                        <span className="font-bold text-zinc-700 dark:text-zinc-300">{formatPoints(row.pointsYear)} b.</span>
+                      </div>
+                      <div className="flex justify-between items-baseline font-mono">
+                        <span className="text-zinc-500 text-[11px]">Výplata:</span>
+                        <span className="font-extrabold text-zinc-900 dark:text-zinc-100">{formatCurrencyFull(row.payoutYear)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="py-12 text-center text-zinc-400 text-sm">
+              Žádná data k zobrazení.
+            </div>
+          )}
         </div>
 
         {/* Bottom Summary Footer */}

@@ -220,7 +220,7 @@ export default function ProductEditModal({ isOpen, onClose, onSaved, productToEd
             {/* Basic Info & Visuals */}
             <div className="space-y-4">
               <h3 className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-2">Identifikace a vzhled</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-3">
                 <div className="flex flex-col justify-between h-full space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">Název produktu <span className="text-red-500">*</span></label>
@@ -320,7 +320,7 @@ export default function ProductEditModal({ isOpen, onClose, onSaved, productToEd
             {/* Values - Enlarged with prominent formatting */}
             <div className="space-y-4">
               <h3 className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-2">Stav majetku a cashflow</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mt-3">
                 <div className="bg-zinc-50/70 dark:bg-zinc-900/50 p-4 rounded-2xl border border-zinc-200/80 dark:border-zinc-800/80 shadow-xs">
                   <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider mb-2">Počáteční / Aktuální AUM</label>
                   <div className="relative flex items-center">
@@ -422,7 +422,7 @@ export default function ProductEditModal({ isOpen, onClose, onSaved, productToEd
           </div>
 
           {/* Modal Footer */}
-          <div className="px-6 py-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/50">
+          <div className="px-6 py-4 border-t border-zinc-200 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-3 bg-zinc-50/50 dark:bg-zinc-900/50">
             {productToEdit ? (
               <button
                 type="button"
