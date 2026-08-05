@@ -146,7 +146,7 @@ export default function HistoryManageModal({ open, onClose, onUpdated }: Props) 
                 )}
               </div>
 
-              <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+              <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl overflow-x-auto">
                 <table className="w-full text-xs text-left">
                   <thead className="bg-zinc-50 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-300 sticky top-0 border-b border-zinc-200 dark:border-zinc-800">
                     <tr>

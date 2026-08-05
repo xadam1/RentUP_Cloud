@@ -556,12 +556,12 @@ export default function DashboardPage() {
 
       {/* Table: Detail produktů pod správou */}
       <div className="modern-card overflow-hidden mb-8 border border-zinc-200 dark:border-zinc-800 shadow-sm">
-        <div className="px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center bg-transparent">
+        <div className="px-5 sm:px-6 py-5 border-b border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-4 bg-transparent">
           <div>
             <h2 className="text-lg font-bold text-zinc-900 dark:text-white tracking-tight">Detail produktů pod správou</h2>
-            <div className="flex items-center gap-2 mt-0.5">
+            <div className="flex flex-wrap items-center gap-2 mt-0.5">
               <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                {sortField ? 'Aktivní řazení podle sloupců. Pro změnu pořadí tahem jej vypněte.' : 'Táhnutím za úchop vlevo můžete přizpůsobit výchozí pořadí zobrazení aktiv.'}
+                {sortField ? 'Aktivní řazení podle sloupců. Pro změnu pořadí tahem jej vypněte.' : 'Táhnutím za úchop na PC můžete přizpůsobit pořadí aktiv.'}
               </p>
               {sortField && (
                 <button 
@@ -575,19 +575,19 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
             <CsvImportButton onImported={loadData} />
             <button
               onClick={handleOpenCreate}
               type="button"
-              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all shadow-sm shadow-blue-500/20 border border-blue-500 cursor-pointer"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-all shadow-sm shadow-blue-500/20 border border-blue-500 cursor-pointer flex-1 sm:flex-none justify-center"
             >
               <Plus className="w-3.5 h-3.5 stroke-[2]" />
               <span>Nový produkt</span>
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto hidden md:block">
           <table className="w-full text-left border-collapse whitespace-nowrap">
             <thead>
               <tr className="bg-zinc-50/50 dark:bg-zinc-800/20 border-b border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 text-[10px] uppercase tracking-widest font-bold select-none">
@@ -770,6 +770,107 @@ export default function DashboardPage() {
             </tfoot>
           </table>
         </div>
+
+        {/* Mobilní karetní pohled na produkty (md:hidden) */}
+        <div className="md:hidden p-3.5 space-y-3.5 bg-zinc-50/50 dark:bg-zinc-900/40">
+          {allProducts.length > 0 ? (
+            allProducts.map((item: ProductDashboardItem) => {
+              const color = item.colorHex || '#3b82f6';
+              const initials = getInitials(item.name);
+              const catLabel = categoryLabels[item.category as string] ?? categoryLabels[String(item.category)] ?? item.category;
+              const share = item.portfolioSharePercent || 0;
+              const income = item.monthlyIncomeCzk || (item.yearlyPoints * (summary?.basePointValue || 150)) / 12 || 0;
+
+              return (
+                <div 
+                  key={item.id}
+                  onClick={() => handleRowClick(item)}
+                  className="bg-white dark:bg-zinc-800/90 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-700/80 shadow-xs active:scale-[0.98] transition-all cursor-pointer space-y-3.5 relative overflow-hidden"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div 
+                        className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white text-xs shadow-sm flex-shrink-0"
+                        style={{ backgroundColor: color }}
+                      >
+                        {initials}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="text-sm font-bold text-zinc-900 dark:text-white truncate">{item.name}</h3>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{catLabel}</span>
+                          {item.includeInAum === false && (
+                            <span className="inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-700 text-zinc-500">
+                              Nezahrnuto
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-[10px] font-bold uppercase text-zinc-400 dark:text-zinc-500 tracking-wider">AUM</p>
+                      <p className="text-sm font-extrabold font-mono text-blue-600 dark:text-blue-400 tabular-nums">
+                        {formatCurrencyFull(item.currentAum)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Portfolio share progress */}
+                  <div className="space-y-1.5 pt-0.5">
+                    <div className="flex justify-between text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
+                      <span>Podíl v portfoliu</span>
+                      <span className="font-mono font-bold text-zinc-700 dark:text-zinc-200">{share.toFixed(1)} %</span>
+                    </div>
+                    <div className="w-full bg-zinc-100 dark:bg-zinc-700/80 h-1.5 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full rounded-full transition-all duration-500" 
+                        style={{ width: `${Math.min(100, Math.max(0, share))}%`, backgroundColor: color }} 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bottom chips */}
+                  <div className="pt-2.5 border-t border-zinc-100 dark:border-zinc-700/60 grid grid-cols-2 gap-2 text-xs">
+                    <div className="bg-zinc-50 dark:bg-zinc-800/60 rounded-xl p-2.5 border border-zinc-100 dark:border-zinc-700/40">
+                      <p className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Měsíční vklad</p>
+                      <p className="text-xs font-bold font-mono text-zinc-800 dark:text-zinc-200 mt-0.5 tabular-nums">
+                        {item.monthlyDeposit > 0 ? formatCurrencyFull(item.monthlyDeposit) : '0 Kč'}
+                      </p>
+                    </div>
+                    <div className="bg-emerald-50/70 dark:bg-emerald-500/10 rounded-xl p-2.5 border border-emerald-100 dark:border-emerald-500/20 text-right">
+                      <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Příjem / měsíčně</p>
+                      <p className="text-xs font-extrabold font-mono text-emerald-600 dark:text-emerald-400 mt-0.5 tabular-nums">
+                        ~ {formatCurrencyFull(income)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="py-10 text-center text-zinc-400 dark:text-zinc-500 font-medium text-sm bg-white dark:bg-zinc-800/50 rounded-2xl border border-dashed border-zinc-200 dark:border-zinc-700">
+              Zatím nemáte zaregistrovaná žádná investiční aktiva.
+            </div>
+          )}
+
+          {/* Celkový souhrn pro telefony */}
+          <div className="mt-4 p-4 bg-zinc-900 dark:bg-zinc-800 rounded-2xl text-white shadow-md space-y-3">
+            <div className="flex items-center justify-between border-b border-zinc-700 pb-2.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">Celkem Portfolio ({includedCount} aktiv)</span>
+              <span className="text-base font-extrabold font-mono text-blue-400">{formatCurrencyFull(summary?.totalAum || 0)}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs pt-0.5">
+              <div>
+                <span className="text-[10px] text-zinc-400 block uppercase">Celkové vklady</span>
+                <span className="text-xs font-bold font-mono text-zinc-200">{formatCurrencyFull(summary?.totalMonthlyDeposit || 0)}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-zinc-400 block uppercase">Pasivní příjem</span>
+                <span className="text-xs font-extrabold font-mono text-emerald-400">~ {formatCurrencyFull(summary?.estimatedCommissionMonthCzk || 0)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Charts Section Grid */}
@@ -876,7 +977,7 @@ export default function DashboardPage() {
               <h2 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">Vývoj AUM</h2>
               <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Historie spravovaného majetku</p>
             </div>
-            <div className="flex items-center gap-2 self-start sm:self-auto">
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
               <HistoryImportButton onImported={loadData} />
               <button
                 type="button"
@@ -971,6 +1072,7 @@ export default function DashboardPage() {
                     tickFormatter={(val: any) => formatChartAxis(val)} 
                     stroke={isDark ? '#52525b' : '#a1a1aa'}
                     fontSize={11}
+                    width={55}
                     tickLine={false}
                     axisLine={false}
                   />
