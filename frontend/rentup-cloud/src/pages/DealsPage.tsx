@@ -125,7 +125,7 @@ function DealDialog({ deal, products, onClose, onSaved }: {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5">Klient *</label>
               <input 
@@ -169,7 +169,7 @@ function DealDialog({ deal, products, onClose, onSaved }: {
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5">Kategorie</label>
               <select 
@@ -192,7 +192,7 @@ function DealDialog({ deal, products, onClose, onSaved }: {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5">Objem vkladu (CZK)</label>
               <input 
@@ -315,7 +315,7 @@ export default function DealsPage() {
       <div className="flex justify-end border-b border-zinc-200 dark:border-zinc-800 pb-4">
         <button 
           onClick={() => setDialog('new')}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/25 cursor-pointer"
+          className="flex items-center justify-center w-full sm:w-auto gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/25 cursor-pointer"
         >
           <Plus className="w-4 h-4 stroke-[2.5]" />
           <span>Přidat nový obchod</span>
@@ -381,67 +381,139 @@ export default function DealsPage() {
             <p className="text-xs text-zinc-400 max-w-sm mx-auto">Kliknutím na "Přidat nový obchod" vytvoříte svůj první záznam do deníku provizních příjmů.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-                  {['Klient & Partner', 'Datum', 'Investované Aktivum / Produkt', 'Objem vkladu', 'Vytěžené Body', 'Odhad provize', 'Stav', 'Akce'].map((h, idx) => (
-                    <th key={h} className={`py-3.5 px-5 ${idx >= 3 && idx <= 5 ? 'text-right' : ''} ${idx === 7 ? 'text-right' : ''}`}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/80 text-sm text-zinc-700 dark:text-zinc-300">
-                {deals.map(d => (
-                  <tr key={d.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                    <td className="py-4 px-5">
-                      <div className="font-bold text-zinc-900 dark:text-zinc-100">{d.clientName}</div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{COMPANIES[d.company] ?? d.company}</div>
-                    </td>
-                    <td className="py-4 px-5 text-zinc-600 dark:text-zinc-400 font-medium">
-                      {new Date(d.date).toLocaleDateString('cs-CZ')}
-                    </td>
-                    <td className="py-4 px-5">
-                      <div className="font-semibold text-zinc-800 dark:text-zinc-200">{d.productName || 'Neuvedený produkt'}</div>
-                      <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{CATEGORIES[d.category] ?? d.category}</div>
-                    </td>
-                    <td className="py-4 px-5 text-right font-mono font-bold text-zinc-900 dark:text-white">
-                      {d.depositAmount.toLocaleString('cs-CZ')} Kč
-                    </td>
-                    <td className="py-4 px-5 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
-                      ~{d.calculatedPoints.toLocaleString('cs-CZ', { maximumFractionDigits: 1 })} b.
-                    </td>
-                    <td className="py-4 px-5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                      {czk.format(d.estimatedCommission)}
-                    </td>
-                    <td className="py-4 px-5">
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_COLORS[d.status]}`}>
-                        <CheckCircle2 className="w-3 h-3" />
-                        <span>{STATUS_LABELS[d.status]}</span>
-                      </span>
-                    </td>
-                    <td className="py-4 px-5 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button 
-                          onClick={() => setDialog(d)}
-                          title="Upravit obchod"
-                          className="p-1.5 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(d)}
-                          title="Odstranit"
-                          className="p-1.5 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="overflow-x-auto hidden md:block">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    {['Klient & Partner', 'Datum', 'Investované Aktivum / Produkt', 'Objem vkladu', 'Vytěžené Body', 'Odhad provize', 'Stav', 'Akce'].map((h, idx) => (
+                      <th key={h} className={`py-3.5 px-5 ${idx >= 3 && idx <= 5 ? 'text-right' : ''} ${idx === 7 ? 'text-right' : ''}`}>{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800/80 text-sm text-zinc-700 dark:text-zinc-300">
+                  {deals.map(d => (
+                    <tr key={d.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                      <td className="py-4 px-5">
+                        <div className="font-bold text-zinc-900 dark:text-zinc-100">{d.clientName}</div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{COMPANIES[d.company] ?? d.company}</div>
+                      </td>
+                      <td className="py-4 px-5 text-zinc-600 dark:text-zinc-400 font-medium">
+                        {new Date(d.date).toLocaleDateString('cs-CZ')}
+                      </td>
+                      <td className="py-4 px-5">
+                        <div className="font-semibold text-zinc-800 dark:text-zinc-200">{d.productName || 'Neuvedený produkt'}</div>
+                        <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{CATEGORIES[d.category] ?? d.category}</div>
+                      </td>
+                      <td className="py-4 px-5 text-right font-mono font-bold text-zinc-900 dark:text-white">
+                        {d.depositAmount.toLocaleString('cs-CZ')} Kč
+                      </td>
+                      <td className="py-4 px-5 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                        ~{d.calculatedPoints.toLocaleString('cs-CZ', { maximumFractionDigits: 1 })} b.
+                      </td>
+                      <td className="py-4 px-5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                        {czk.format(d.estimatedCommission)}
+                      </td>
+                      <td className="py-4 px-5">
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${STATUS_COLORS[d.status]}`}>
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>{STATUS_LABELS[d.status]}</span>
+                        </span>
+                      </td>
+                      <td className="py-4 px-5 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => setDialog(d)}
+                            title="Upravit obchod"
+                            className="p-1.5 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(d)}
+                            title="Odstranit"
+                            className="p-1.5 text-zinc-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobilní karetní rozhraní pro seznam uzavřených obchodů (md:hidden) */}
+            <div className="md:hidden divide-y divide-zinc-200 dark:divide-zinc-800/60 p-3.5 space-y-3.5 bg-zinc-50/40 dark:bg-zinc-900/30">
+              {deals.map(d => (
+                <div 
+                  key={d.id} 
+                  className="bg-white dark:bg-zinc-800/90 rounded-2xl p-4 border border-zinc-200/80 dark:border-zinc-700/80 shadow-xs space-y-3 relative"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">{d.clientName}</h3>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{COMPANIES[d.company] ?? d.company}</p>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border flex-shrink-0 ${STATUS_COLORS[d.status]}`}>
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>{STATUS_LABELS[d.status]}</span>
+                    </span>
+                  </div>
+
+                  <div className="bg-zinc-50 dark:bg-zinc-800/50 p-2.5 rounded-xl border border-zinc-100 dark:border-zinc-700/50 text-xs space-y-1.5">
+                    <div className="flex justify-between items-center text-zinc-500 dark:text-zinc-400">
+                      <span>Produkt:</span>
+                      <span className="font-bold text-zinc-800 dark:text-zinc-200 truncate max-w-[180px] text-right">{d.productName || 'Neuvedený produkt'}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-zinc-500 dark:text-zinc-400">
+                      <span>Kategorie:</span>
+                      <span className="text-zinc-700 dark:text-zinc-300">{CATEGORIES[d.category] ?? d.category}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-zinc-500 dark:text-zinc-400">
+                      <span>Datum:</span>
+                      <span className="font-medium text-zinc-700 dark:text-zinc-300">{new Date(d.date).toLocaleDateString('cs-CZ')}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 pt-0.5 text-center text-xs">
+                    <div className="bg-zinc-50 dark:bg-zinc-800/60 p-2 rounded-xl border border-zinc-100 dark:border-zinc-700/50">
+                      <span className="text-[9px] text-zinc-400 block font-bold uppercase tracking-wide">Vklad</span>
+                      <span className="font-mono font-bold text-zinc-900 dark:text-white mt-0.5 block">{d.depositAmount.toLocaleString('cs-CZ')} Kč</span>
+                    </div>
+                    <div className="bg-amber-50/60 dark:bg-amber-500/10 p-2 rounded-xl border border-amber-100 dark:border-amber-500/20">
+                      <span className="text-[9px] text-amber-600/80 dark:text-amber-400/80 block font-bold uppercase tracking-wide">Body</span>
+                      <span className="font-mono font-bold text-amber-600 dark:text-amber-400 mt-0.5 block">~{d.calculatedPoints.toLocaleString('cs-CZ', { maximumFractionDigits: 1 })} b.</span>
+                    </div>
+                    <div className="bg-emerald-50/70 dark:bg-emerald-500/10 p-2 rounded-xl border border-emerald-100 dark:border-emerald-500/20">
+                      <span className="text-[9px] text-emerald-600/80 dark:text-emerald-400/80 block font-bold uppercase tracking-wide">Provize</span>
+                      <span className="font-mono font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block">{czk.format(d.estimatedCommission)}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-700/50">
+                    <button 
+                      type="button"
+                      onClick={() => setDialog(d)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all cursor-pointer border border-blue-200/60 dark:border-blue-500/20"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      <span>Upravit</span>
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => handleDelete(d)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-xl hover:bg-red-100 dark:hover:bg-red-500/20 transition-all cursor-pointer border border-red-200/60 dark:border-red-500/20"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Smazat</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
