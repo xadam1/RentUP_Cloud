@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { aumApi, productsApi, type DashboardSummary, type AumSnapshot, type ProductDashboardItem } from '@/lib/api';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useModal } from '@/contexts/ModalContext';
 import ProductEditModal from '@/components/dashboard/ProductEditModal';
 import CsvImportButton from '@/components/dashboard/CsvImportButton';
 import HistoryImportButton from '@/components/dashboard/HistoryImportButton';
@@ -131,7 +132,30 @@ const CustomPieTooltip = ({ active, payload, totalAum }: CustomPieTooltipProps) 
 };
 
 export default function DashboardPage() {
+  const { alert } = useModal();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+
+  useEffect(() => {
+    const msg = localStorage.getItem('rentup_welcome_message');
+    if (msg) {
+      localStorage.removeItem('rentup_welcome_message');
+      if (msg === 'welcome_invite') {
+        alert({
+          title: 'Vítejte v RentUP Cloud & AUM!',
+          description: 'Váš účet na pozvánku byl aktivován a Vaše heslo úspěšně nastaveno. Vítejte ve svém osobním rozhraní pro profesionální správu investičního portfolia!',
+          variant: 'info',
+          confirmText: 'Vstoupit do aplikace'
+        });
+      } else if (msg === 'welcome_password_updated') {
+        alert({
+          title: 'Heslo bylo úspěšně změněno',
+          description: 'Vaše nové bezpečné heslo je od této chvíle plně aktivní pro všechna budoucí přihlášení.',
+          variant: 'info',
+          confirmText: 'Rozumím, pokračovat'
+        });
+      }
+    }
+  }, [alert]);
   const [snapshots, setSnapshots] = useState<AumSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

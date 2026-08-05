@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { settingsApi, aumApi, type UpdateSettingsRequest } from '@/lib/api'
+import { supabase } from '@/lib/supabase'
 import { useTheme } from '@/contexts/ThemeContext'
-import { Database, Sparkles, CheckCircle2, AlertCircle, RefreshCw, TrendingUp } from 'lucide-react'
+import { Database, Sparkles, CheckCircle2, AlertCircle, RefreshCw, TrendingUp, ShieldCheck, Eye, EyeOff, Check } from 'lucide-react'
 import { useModal } from '@/contexts/ModalContext'
 
 export default function SettingsPage() {
@@ -15,6 +16,47 @@ export default function SettingsPage() {
     return localStorage.getItem('rentup_dashboard_comparison_period') || 'YTD'
   })
   const { theme } = useTheme()
+
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [pwdLoading, setPwdLoading] = useState(false)
+  const [pwdError, setPwdError] = useState<string | null>(null)
+  const [pwdSuccess, setPwdSuccess] = useState<string | null>(null)
+
+  const pwdCriteria = useMemo(() => ({
+    length: newPassword.length >= 8,
+    case: /[A-Z]/.test(newPassword) && /[a-z]/.test(newPassword),
+    numberOrSpecial: /[0-9]/.test(newPassword) || /[^A-Za-z0-9]/.test(newPassword),
+    match: newPassword.length > 0 && newPassword === confirmPassword,
+  }), [newPassword, confirmPassword])
+
+  const isPasswordValid = Object.values(pwdCriteria).every(Boolean)
+
+  const handleUpdatePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!isPasswordValid) {
+      setPwdError('Heslo nesplňuje všechna požadovaná bezpečnostní kritéria.')
+      return
+    }
+    setPwdLoading(true)
+    setPwdError(null)
+    setPwdSuccess(null)
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    setPwdLoading(false)
+    if (error) {
+      if (error.message.includes('Password should be at least')) setPwdError('Heslo musí mít alespoň 8 znaků.')
+      else if (error.message.includes('different')) setPwdError('Nové heslo se musí lišit od Vašeho stávajícího hesla.')
+      else setPwdError('Při změně hesla došlo k chybě: ' + error.message)
+    } else {
+      setPwdSuccess('Vaše nové heslo bylo úspěšně nastaveno a uloženo do zabezpečeného úložiště.')
+      setNewPassword('')
+      setConfirmPassword('')
+      setTimeout(() => setPwdSuccess(null), 6000)
+    }
+  }
 
   useEffect(() => {
     settingsApi.get().then(r => setForm({
@@ -177,6 +219,128 @@ export default function SettingsPage() {
           </button>
         </div>
       </form>
+
+      {/* Zabezpečení účtu - Změna hesla */}
+      <div className="modern-card p-6 lg:p-8 space-y-6 border-l-4 border-blue-500">
+        <div className="flex items-start justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-4">
+          <div className="space-y-1">
+            <h2 className="text-base font-bold text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-blue-500" />
+              <span>Zabezpečení účtu a změna přihlašovacího hesla</span>
+            </h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xl leading-relaxed">
+              Zde si můžete kdykoliv bezpečně obměnit své stávající heslo bez nutnosti odhlášení ze systému či čekání na e-mailové potvrzení.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleUpdatePassword} className="space-y-5 max-w-xl">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5 uppercase tracking-wider">
+                Nové heslo
+              </label>
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  required
+                  className="w-full bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-300 dark:border-zinc-700 rounded-xl pl-4 pr-11 py-3 text-zinc-900 dark:text-white placeholder-zinc-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                  placeholder="Min. 8 znaků..."
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-3 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 cursor-pointer transition-colors"
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-zinc-700 dark:text-zinc-300 text-xs font-bold mb-1.5 uppercase tracking-wider">
+                Potvrdit nové heslo
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  required
+                  className="w-full bg-zinc-50 dark:bg-zinc-800/80 border border-zinc-300 dark:border-zinc-700 rounded-xl pl-4 pr-11 py-3 text-zinc-900 dark:text-white placeholder-zinc-400 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                  placeholder="Zopakujte heslo..."
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-3 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 cursor-pointer transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Ukazatel síly hesla */}
+          <div className="p-4 rounded-xl bg-zinc-100/80 dark:bg-zinc-800/50 border border-zinc-200/60 dark:border-zinc-700/60 space-y-2.5">
+            <p className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">Požadovaná kritéria síly hesla:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div className={`flex items-center gap-2 transition-colors ${pwdCriteria.length ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                {pwdCriteria.length ? <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" /> : <div className="w-4 h-4 rounded-full border-2 border-zinc-400/50 flex-shrink-0" />}
+                <span>Minimální délka 8 znaků</span>
+              </div>
+              <div className={`flex items-center gap-2 transition-colors ${pwdCriteria.case ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                {pwdCriteria.case ? <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" /> : <div className="w-4 h-4 rounded-full border-2 border-zinc-400/50 flex-shrink-0" />}
+                <span>Malá a velká písmena</span>
+              </div>
+              <div className={`flex items-center gap-2 transition-colors ${pwdCriteria.numberOrSpecial ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                {pwdCriteria.numberOrSpecial ? <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" /> : <div className="w-4 h-4 rounded-full border-2 border-zinc-400/50 flex-shrink-0" />}
+                <span>Číslice nebo speciální znak</span>
+              </div>
+              <div className={`flex items-center gap-2 transition-colors ${pwdCriteria.match && confirmPassword ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                {pwdCriteria.match && confirmPassword ? <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" /> : <div className="w-4 h-4 rounded-full border-2 border-zinc-400/50 flex-shrink-0" />}
+                <span>Obě zadaná hesla se shodují</span>
+              </div>
+            </div>
+          </div>
+
+          {pwdError && (
+            <div className="flex items-center gap-2.5 text-red-600 dark:text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 font-medium animate-in fade-in">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-red-500" />
+              <span>{pwdError}</span>
+            </div>
+          )}
+
+          {pwdSuccess && (
+            <div className="flex items-center gap-2.5 text-emerald-600 dark:text-emerald-400 text-sm bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 font-medium animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-emerald-500" />
+              <span>{pwdSuccess}</span>
+            </div>
+          )}
+
+          <div>
+            <button
+              type="submit"
+              disabled={pwdLoading || !isPasswordValid}
+              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold rounded-xl text-sm transition-all duration-200 shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+            >
+              {pwdLoading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                  <span>Aktualizuje se heslo...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Změnit přístupové heslo</span>
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
 
       {/* Správa a generátor ukázkových dat */}
       <div className="modern-card p-6 lg:p-8 space-y-5 border-l-4 border-indigo-500">

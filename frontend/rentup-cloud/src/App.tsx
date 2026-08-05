@@ -11,12 +11,15 @@ import SettingsPage from '@/pages/SettingsPage'
 import ComingSoonPage from '@/pages/ComingSoonPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth()
+  const { session, loading, authAction } = useAuth()
   if (loading) return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
       <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
+  if (session && authAction) {
+    return <Navigate to={`/login?view=update_password&type=${authAction}`} replace />
+  }
   return session ? <>{children}</> : <Navigate to="/login" replace />
 }
 
