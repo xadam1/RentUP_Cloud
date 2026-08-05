@@ -19,13 +19,13 @@ const formatPoints = (value: number) => {
 
 const formatAbbrevVal = (value: number) => {
   if (value >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(2).replace('.', ',')}Mld.`
+    return `${(value / 1_000_000_000).toFixed(2).replace('.', ',')} mld.`
   }
   if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1).replace('.', ',')}M`
+    return `${(value / 1_000_000).toFixed(1).replace('.', ',')} mil.`
   }
   if (value >= 100_000) {
-    return `${(value / 1_000).toFixed(0).replace('.', ',')}k`
+    return `${(value / 1_000).toFixed(0).replace('.', ',')} k`
   }
   return Math.round(value).toLocaleString('cs-CZ')
 }

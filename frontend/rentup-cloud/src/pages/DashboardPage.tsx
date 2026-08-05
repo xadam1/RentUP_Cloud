@@ -71,24 +71,39 @@ const formatCurrencyFull = (value: number) => {
 
 // Helper for abbreviation number without currency unit
 const formatAbbrevVal = (value: number) => {
+  if (value >= 1_000_000_000) {
+    return `${(value / 1_000_000_000).toFixed(2).replace('.', ',')} mld.`;
+  }
   if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1).replace('.', ',')}M`;
+    return `${(value / 1_000_000).toFixed(1).replace('.', ',')} mil.`;
   }
   if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(0).replace('.', ',')}k`;
+    return `${(value / 1_000).toFixed(0).replace('.', ',')} k`;
   }
   return Math.round(value).toLocaleString('cs-CZ');
 };
 
 // Helper for abbreviation (M / k) with currency unit
 const formatAbbrev = (value: number) => {
+  if (value >= 1_000_000_000) {
+    return `${(value / 1_000_000_000).toFixed(2).replace('.', ',')} mld. Kč`;
+  }
   if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1).replace('.', ',')} M Kč`;
+    return `${(value / 1_000_000).toFixed(1).replace('.', ',')} mil. Kč`;
   }
   if (value >= 1_000) {
     return `${(value / 1_000).toFixed(1).replace('.', ',')} k Kč`;
   }
   return `${Math.round(value).toLocaleString('cs-CZ')} Kč`;
+};
+
+const formatChartAxis = (val: number) => {
+  const n = Number(val);
+  if (isNaN(n) || n === 0) return '0';
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1).replace('.', ',')} mld.`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(0)} mil.`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)} k`;
+  return `${n}`;
 };
 
 // Helper to generate 2 initials for product logo
@@ -277,14 +292,30 @@ export default function DashboardPage() {
   };
 
   // KPI comparison calculations
-  const { aumChangePercent, depositChangePercent, isAumUp, isDepUp } = useMemo(() => {
+  const { aumBadge, depBadge } = useMemo(() => {
     const p = comparisonPeriod;
+    const currentAum = summary?.totalAum || 0;
+    const currentDep = summary?.totalMonthlyDeposit || 0;
+
+    const buildBadge = (current: number, past: number, newLabel: string) => {
+      if (current === 0 && past === 0) {
+        return { text: `0 % za ${p}`, isUp: true, isNew: false };
+      }
+      if (past === 0 && current > 0) {
+        return { text: newLabel, isUp: true, isNew: true };
+      }
+      const diff = ((current - past) / (past || 1)) * 100;
+      const absDiff = Math.abs(parseFloat(diff.toFixed(1))) || 0;
+      const sign = diff > 0 && absDiff > 0 ? '+' : (diff < 0 && absDiff > 0 ? '-' : '');
+      const text = absDiff === 0 ? `0 % za ${p}` : `${sign}${absDiff} % za ${p}`;
+      return { text, isUp: diff >= 0, isNew: false };
+    };
+
     if (!snapshots || snapshots.length < 2) {
-      const defaultAum: Record<string, number> = { '1M': 2.1, '3M': 5.8, '6M': 11.2, '1R': 24.5, 'YTD': 18.4 };
-      const defaultDep: Record<string, number> = { '1M': 0.8, '3M': 1.9, '6M': 3.4, '1R': 8.1, 'YTD': 5.2 };
-      const valAum = defaultAum[p] || 18.4;
-      const valDep = defaultDep[p] || 5.2;
-      return { aumChangePercent: Math.abs(valAum), depositChangePercent: Math.abs(valDep), isAumUp: valAum >= 0, isDepUp: valDep >= 0 };
+      return {
+        aumBadge: buildBadge(currentAum, 0, 'Nová produkce'),
+        depBadge: buildBadge(currentDep, 0, 'Nové vklady'),
+      };
     }
 
     const sorted = [...snapshots].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -296,16 +327,16 @@ export default function DashboardPage() {
     else targetIdx = 0;
 
     const past = sorted[targetIdx];
-    const aumDiff = ((latest.totalAum - past.totalAum) / (past.totalAum || 1)) * 100;
-    const depDiff = ((latest.totalMonthlyDeposit - past.totalMonthlyDeposit) / (past.totalMonthlyDeposit || 1)) * 100;
+    const latestAumVal = summary?.totalAum ?? latest.totalAum ?? 0;
+    const latestDepVal = summary?.totalMonthlyDeposit ?? latest.totalMonthlyDeposit ?? 0;
+    const pastAumVal = past?.totalAum ?? 0;
+    const pastDepVal = past?.totalMonthlyDeposit ?? 0;
 
-    return { 
-      aumChangePercent: Math.abs(parseFloat(aumDiff.toFixed(1))) || 18.4, 
-      depositChangePercent: Math.abs(parseFloat(depDiff.toFixed(1))) || 5.2, 
-      isAumUp: aumDiff >= 0,
-      isDepUp: depDiff >= 0
+    return {
+      aumBadge: buildBadge(latestAumVal, pastAumVal, 'Nová produkce'),
+      depBadge: buildBadge(latestDepVal, pastDepVal, 'Nové vklady'),
     };
-  }, [snapshots, comparisonPeriod]);
+  }, [snapshots, summary, comparisonPeriod]);
 
   // Products filtering & counts
   const allProducts = useMemo(() => {
@@ -440,12 +471,12 @@ export default function DashboardPage() {
 
           <div className="mt-4 flex items-center">
             <span className={`inline-flex items-center gap-1.5 text-[12px] font-bold ${
-              isAumUp 
+              aumBadge.isUp 
                 ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20' 
                 : 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20'
             } px-2 py-1 rounded-md`}>
-              {isAumUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-              <span>{isAumUp ? '+' : '-'}{aumChangePercent}% za {comparisonPeriod}</span>
+              {aumBadge.isNew ? <Sparkles className="w-3.5 h-3.5" /> : (aumBadge.isUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />)}
+              <span>{aumBadge.text}</span>
             </span>
           </div>
         </div>
@@ -471,12 +502,12 @@ export default function DashboardPage() {
 
           <div className="mt-4 flex items-center gap-2">
             <span className={`inline-flex items-center gap-1.5 text-[12px] font-bold ${
-              isDepUp 
+              depBadge.isUp 
                 ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20' 
                 : 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20'
             } px-2 py-1 rounded-md`}>
-              {isDepUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-              <span>{isDepUp ? '+' : '-'}{depositChangePercent}% za {comparisonPeriod}</span>
+              {depBadge.isNew ? <Sparkles className="w-3.5 h-3.5" /> : (depBadge.isUp ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />)}
+              <span>{depBadge.text}</span>
             </span>
           </div>
         </div>
@@ -937,7 +968,7 @@ export default function DashboardPage() {
                     axisLine={false}
                   />
                   <YAxis 
-                    tickFormatter={(val: any) => `${(Number(val) / 1_000_000).toFixed(0)}M`} 
+                    tickFormatter={(val: any) => formatChartAxis(val)} 
                     stroke={isDark ? '#52525b' : '#a1a1aa'}
                     fontSize={11}
                     tickLine={false}
